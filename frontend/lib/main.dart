@@ -4,7 +4,7 @@ import 'package:frontend/core/routes/app_routes.dart';
 import 'package:frontend/core/routes/route_manager.dart';
 import 'package:frontend/core/theme/app_theme.dart';
 import 'package:frontend/features/auth/presentations/providers/auth_provider.dart';
-import 'package:frontend/features/auth/presentations/screens/login_screen.dart';
+import 'package:frontend/features/clinicians/presentation/providers/clinician_provider.dart';
 import 'package:provider/provider.dart';
 
 void main() {
@@ -19,6 +19,7 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => ClinicianProvider()),
       ],
       child: MaterialApp(
         title: AppStrings.appName,

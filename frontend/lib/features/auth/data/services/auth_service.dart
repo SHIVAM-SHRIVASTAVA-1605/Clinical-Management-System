@@ -32,7 +32,7 @@ class AuthService {
           'id' : '1',
           'email' : email,
           'name' : 'John Doe',
-          'role' : 'patient',
+          'role' : 'clinician',
           'phone' : '+124567890',
           'createdAt' : DateTime.now().toIso8601String(),
         },

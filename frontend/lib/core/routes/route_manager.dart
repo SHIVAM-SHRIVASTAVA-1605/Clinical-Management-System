@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/features/auth/presentations/screens/login_screen.dart';
 import 'package:frontend/features/auth/presentations/screens/register_screen.dart';
+import 'package:frontend/features/clinicians/presentation/screens/clinicians_list_screen.dart';
 import 'package:frontend/features/dashboard/presentation/screens/admin_dashboard_screen.dart';
 import 'package:frontend/features/dashboard/presentation/screens/clinician_dashboard_screen.dart';
 import 'package:frontend/features/dashboard/presentation/screens/patient_dashboard_screen.dart';
@@ -29,6 +30,8 @@ class RouteManager {
 
       // TODO: Add more routes as features are built
       case AppRoutes.clinicians:
+        return MaterialPageRoute(builder: (_) => const CliniciansListScreen());
+      
       case AppRoutes.patients:
       case AppRoutes.appointments:
       case AppRoutes.treatmentPlans:
