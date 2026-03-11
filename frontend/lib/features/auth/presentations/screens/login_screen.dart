@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/core/constants/app_strings.dart';
+import 'package:frontend/core/routes/app_routes.dart';
 import 'package:frontend/core/utils/toast_helper.dart';
 import 'package:frontend/core/utils/validators.dart';
 import 'package:frontend/core/widgets/custom_button.dart';
@@ -42,9 +43,21 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if(success) {
         ToastHelper.showSuccess(context, 'Login successful!');
-        // TODO: Naviagte to dashboard when created
+        
+        // TODO: Naviagte to role based dashboard
+        final user = authProvider.user;
+        String route = AppRoutes.patientDashboard;
+
+        if(user?.isAdmin == true) {
+          route = AppRoutes.adminDashboard;
+        } else if(user?.isClinician == true) {
+          route = AppRoutes.clinicianDashboard;
+        }
+        
+        Navigator.pushReplacementNamed(context, route);
       } else {
-        ToastHelper.showError(context,
+        ToastHelper.showError(
+          context,
           authProvider.errorMessage ?? 'Login failed',
         );
       }

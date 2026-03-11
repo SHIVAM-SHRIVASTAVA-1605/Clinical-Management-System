@@ -1,0 +1,198 @@
+import 'package:flutter/material.dart';
+import 'package:frontend/features/auth/presentations/providers/auth_provider.dart';
+import 'package:provider/provider.dart';
+import 'package:frontend/core/constants/app_colors.dart';
+import 'package:frontend/core/routes/app_routes.dart';
+
+// Application navigation drawer
+class AppDrawer extends StatelessWidget {
+  const AppDrawer({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final authProvider = context.watch<AuthProvider>();
+    final user = authProvider.user;
+
+    return Drawer(
+      child: Column(
+        children: [
+          // User Profile Header
+          UserAccountsDrawerHeader(
+            decoration: const BoxDecoration(
+              color: AppColors.primary,
+            ),
+            accountName: Text(
+              user?.name ?? 'User',
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            accountEmail: Text(user?.email ?? ''),
+            currentAccountPicture: CircleAvatar(
+              backgroundColor: AppColors.white,
+              child: Text(
+                user?.name.substring(0, 1).toUpperCase() ?? 'U',
+                style: const TextStyle(
+                  fontSize: 32,
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+
+          // Navigation Items
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                // Dashboard
+                _buildDrawerItem(
+                  context,
+                  icon: Icons.dashboard,
+                  title: 'Dashboard',
+                  onTap: () {
+                    Navigator.pop(context);
+                    // Navigate to role-specific dashboard
+                    _navigateToDashboard(context, user?.role ?? 'patient');
+                  },
+                ),
+
+                const Divider(),
+
+                // Clinicians (Admin & Clinician only)
+                if (user?.isAdmin == true || user?.isClinician == true)
+                  _buildDrawerItem(
+                    context,
+                    icon: Icons.medical_services,
+                    title: 'Clinicians',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.clinicians);
+                    },
+                  ),
+
+                // Patients
+                _buildDrawerItem(
+                  context,
+                  icon: Icons.people,
+                  title: 'Patients',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, AppRoutes.patients);
+                  },
+                ),
+
+                // Appointments
+                _buildDrawerItem(
+                  context,
+                  icon: Icons.calendar_today,
+                  title: 'Appointments',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, AppRoutes.appointments);
+                  },
+                ),
+
+                // Treatment Plans (Clinician & Patient)
+                if (user?.isClinician == true || user?.isPatient == true)
+                  _buildDrawerItem(
+                    context,
+                    icon: Icons.description,
+                    title: 'Treatment Plans',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.treatmentPlans);
+                    },
+                  ),
+
+                // Analytics (Admin only)
+                if (user?.isAdmin == true)
+                  _buildDrawerItem(
+                    context,
+                    icon: Icons.analytics,
+                    title: 'Analytics',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.analytics);
+                    },
+                  ),
+
+                const Divider(),
+
+                // Profile
+                _buildDrawerItem(
+                  context,
+                  icon: Icons.person,
+                  title: 'Profile',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, AppRoutes.profile);
+                  },
+                ),
+
+                // Settings
+                _buildDrawerItem(
+                  context,
+                  icon: Icons.settings,
+                  title: 'Settings',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, AppRoutes.settings);
+                  },
+                ),
+              ],
+            ),
+          ),
+
+          // Logout
+          const Divider(),
+          _buildDrawerItem(
+            context,
+            icon: Icons.logout,
+            title: 'Logout',
+            iconColor: AppColors.error,
+            onTap: () async {
+              Navigator.pop(context);
+              await authProvider.logout();
+              if (context.mounted) {
+                Navigator.pushReplacementNamed(context, AppRoutes.login);
+              }
+            },
+          ),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDrawerItem(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+    Color? iconColor,
+  }) {
+    return ListTile(
+      leading: Icon(icon, color: iconColor),
+      title: Text(title),
+      onTap: onTap,
+    );
+  }
+
+  void _navigateToDashboard(BuildContext context, String role) {
+    switch (role) {
+      case 'admin':
+        Navigator.pushReplacementNamed(context, AppRoutes.adminDashboard);
+        break;
+      case 'clinician':
+        Navigator.pushReplacementNamed(context, AppRoutes.clinicianDashboard);
+        break;
+      case 'patient':
+      default:
+        Navigator.pushReplacementNamed(context, AppRoutes.patientDashboard);
+        break;
+    }
+  }
+}
