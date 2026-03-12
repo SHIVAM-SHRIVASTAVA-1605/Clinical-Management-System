@@ -11,6 +11,7 @@ import 'package:frontend/features/clinicians/presentation/screens/clinicians_lis
 import 'package:frontend/features/dashboard/presentation/screens/admin_dashboard_screen.dart';
 import 'package:frontend/features/dashboard/presentation/screens/clinician_dashboard_screen.dart';
 import 'package:frontend/features/dashboard/presentation/screens/patient_dashboard_screen.dart';
+import 'package:frontend/features/dashboard/presentation/screens/profile_screen.dart';
 import 'package:frontend/features/patients/presentation/screens/patient_details_screen.dart';
 import 'package:frontend/features/patients/presentation/screens/patients_list_screen.dart';
 import 'package:frontend/features/treatment_plans/presentations/screens/create_treatment_plan_screen.dart';
@@ -106,11 +107,9 @@ class RouteManager {
           builder: (_) => const AnalyticsDashboardScreen(),
         );
 
-      // TODO: Add more routes as features are built
       case AppRoutes.profile:
-      case AppRoutes.settings:
         return MaterialPageRoute(
-          builder: (_) => _ComingSoonScreen(routeName: settings.name ?? ''),
+          builder: (_) => const ProfileScreen(),
         );
 
       default:
@@ -178,8 +177,6 @@ class _ComingSoonScreen extends StatelessWidget {
         return 'Analytics';
       case AppRoutes.profile:
         return 'Profile';
-      case AppRoutes.settings:
-        return 'Settings';
       default:
         return 'Unknown';
     }

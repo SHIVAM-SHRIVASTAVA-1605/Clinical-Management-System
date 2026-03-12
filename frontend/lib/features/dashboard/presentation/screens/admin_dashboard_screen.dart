@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/features/auth/presentations/providers/auth_provider.dart';
+import 'package:frontend/features/clinicians/presentation/providers/clinician_provider.dart';
+import 'package:frontend/features/patients/presentation/providers/patient_provider.dart';
+import 'package:frontend/features/appointments/presentations/provider/appointment_provider.dart';
+import 'package:frontend/features/treatment_plans/presentations/providers/treatment_plan_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:frontend/core/constants/app_colors.dart';
 import 'package:frontend/core/routes/app_routes.dart';
@@ -7,31 +11,62 @@ import 'package:frontend/features/dashboard/presentation/widgets/app_drawer.dart
 import 'package:frontend/features/dashboard/presentation/widgets/stats_card.dart';
 
 // Admin dashboard screen
-class AdminDashboardScreen extends StatelessWidget {
+class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
+
+  @override
+  State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
+}
+
+class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Load data when screen initializes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ClinicianProvider>().fetchClinicians();
+      context.read<PatientProvider>().fetchPatients();
+      context.read<AppointmentProvider>().fetchAppointments();
+      context.read<TreatmentPlanProvider>().fetchTreatmentPlans();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
+    final clinicianProvider = context.watch<ClinicianProvider>();
+    final patientProvider = context.watch<PatientProvider>();
+    final appointmentProvider = context.watch<AppointmentProvider>();
+    final treatmentPlanProvider = context.watch<TreatmentPlanProvider>();
     final user = authProvider.user;
+
+    // Calculate real-time counts
+    final totalClinicians = clinicianProvider.clinicians.length;
+    final totalPatients = patientProvider.patients.length;
+    final todayAppointments = appointmentProvider.appointments.where((apt) {
+      final today = DateTime.now();
+      return apt.scheduledAt.year == today.year &&
+             apt.scheduledAt.month == today.month &&
+             apt.scheduledAt.day == today.day;
+    }).length;
+    final activeTreatments = treatmentPlanProvider.treatmentPlans
+        .where((plan) => plan.status.toString().contains('active'))
+        .length;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Admin Dashboard'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () {
-              // TODO: Navigate to notifications
-            },
-          ),
-        ],
       ),
       drawer: const AppDrawer(),
       body: RefreshIndicator(
         onRefresh: () async {
-          // TODO: Refresh dashboard data
-          await Future.delayed(const Duration(seconds: 1));
+          // Refresh all data
+          await Future.wait([
+            context.read<ClinicianProvider>().fetchClinicians(),
+            context.read<PatientProvider>().fetchPatients(),
+            context.read<AppointmentProvider>().fetchAppointments(),
+            context.read<TreatmentPlanProvider>().fetchTreatmentPlans(),
+          ]);
         },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -68,7 +103,7 @@ class AdminDashboardScreen extends StatelessWidget {
                 children: [
                   StatsCard(
                     title: 'Total Clinicians',
-                    value: '12',
+                    value: totalClinicians.toString(),
                     icon: Icons.medical_services,
                     color: AppColors.primary,
                     onTap: () {
@@ -77,7 +112,7 @@ class AdminDashboardScreen extends StatelessWidget {
                   ),
                   StatsCard(
                     title: 'Total Patients',
-                    value: '48',
+                    value: totalPatients.toString(),
                     icon: Icons.people,
                     color: AppColors.success,
                     onTap: () {
@@ -86,7 +121,7 @@ class AdminDashboardScreen extends StatelessWidget {
                   ),
                   StatsCard(
                     title: 'Appointments Today',
-                    value: '8',
+                    value: todayAppointments.toString(),
                     icon: Icons.calendar_today,
                     color: AppColors.warning,
                     onTap: () {
@@ -95,7 +130,7 @@ class AdminDashboardScreen extends StatelessWidget {
                   ),
                   StatsCard(
                     title: 'Active Treatments',
-                    value: '23',
+                    value: activeTreatments.toString(),
                     icon: Icons.description,
                     color: AppColors.info,
                     onTap: () {
@@ -116,18 +151,7 @@ class AdminDashboardScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
 
-              // Quick Action Cards
-              _buildQuickActionCard(
-                context,
-                icon: Icons.person_add,
-                title: 'Add Clinician',
-                subtitle: 'Register new clinician',
-                color: AppColors.primary,
-                onTap: () {
-                  Navigator.pushNamed(context, AppRoutes.addClinician);
-                },
-              ),
-              const SizedBox(height: 12),
+              // Quick Action Cards - Only View Analytics
               _buildQuickActionCard(
                 context,
                 icon: Icons.analytics,
@@ -136,17 +160,6 @@ class AdminDashboardScreen extends StatelessWidget {
                 color: AppColors.success,
                 onTap: () {
                   Navigator.pushNamed(context, AppRoutes.analytics);
-                },
-              ),
-              const SizedBox(height: 12),
-              _buildQuickActionCard(
-                context,
-                icon: Icons.settings,
-                title: 'System Settings',
-                subtitle: 'Configure system preferences',
-                color: AppColors.info,
-                onTap: () {
-                  Navigator.pushNamed(context, AppRoutes.settings);
                 },
               ),
             ],

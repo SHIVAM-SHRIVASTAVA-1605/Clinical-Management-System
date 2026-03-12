@@ -141,17 +141,6 @@ class AppDrawer extends StatelessWidget {
                     Navigator.pushNamed(context, AppRoutes.profile);
                   },
                 ),
-
-                // Settings
-                _buildDrawerItem(
-                  context,
-                  icon: Icons.settings,
-                  title: 'Settings',
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.pushNamed(context, AppRoutes.settings);
-                  },
-                ),
               ],
             ),
           ),
