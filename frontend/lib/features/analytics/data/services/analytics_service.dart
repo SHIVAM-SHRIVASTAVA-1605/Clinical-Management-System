@@ -1,335 +1,250 @@
 import 'package:frontend/features/analytics/data/models/analytics_model.dart';
-import 'package:frontend/features/appointments/data/models/appointment_model.dart';
-import 'package:frontend/features/appointments/data/services/appointment_service.dart';
-import 'package:frontend/features/clinicians/data/services/clinician_service.dart';
-import 'package:frontend/features/patients/data/services/patient_service.dart';
-import 'package:frontend/features/treatment_plans/data/models/treatment_plan_model.dart';
-import 'package:frontend/features/treatment_plans/data/services/treatment_plan_service.dart';
 
-// Analytics service for aggregating data from other services
+// Analytics service for ClinicalAnalytics records and data aggregation
 class AnalyticsService {
   
   static final AnalyticsService _instance = AnalyticsService._internal();
   factory AnalyticsService() => _instance;
   AnalyticsService._internal();
 
-  final PatientService _patientService = PatientService();
-  final ClinicianService _clinicianService = ClinicianService();
-  final AppointmentService _appointmentService = AppointmentService();
-  final TreatmentPlanService _treatmentPlanService = TreatmentPlanService();
+  // Mock storage for clinical analytics records
+  final List<ClinicalAnalyticsModel> _mockAnalyticsRecords = [];
 
-  // Get complete analytics data
-  Future<AnalyticsData> getAnalyticsData() async {
+  // Get analytics with customizable filters
+  Future<List<ClinicalAnalyticsModel>> getAnalytics({
+    String? metricType,
+    String? clinicianId,
+    String? location,
+    String? patientAgeGroup,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    // TODO: Replace with actual API call when backend is ready
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    // Initialize mock data if empty
+    if (_mockAnalyticsRecords.isEmpty) {
+      await _initializeMockAnalyticsRecords();
+    }
+
+    // Filter records based on criteria
+    var filtered = _mockAnalyticsRecords.where((record) {
+      // Filter by metric type
+      if (metricType != null && record.metricType != metricType) {
+        return false;
+      }
+
+      // Filter by clinician ID
+      if (clinicianId != null && 
+          record.data.filters.clinicianId != null &&
+          record.data.filters.clinicianId != clinicianId) {
+        return false;
+      }
+
+      // Filter by location
+      if (location != null && 
+          record.data.filters.location != null &&
+          record.data.filters.location != location) {
+        return false;
+      }
+
+      // Filter by age group
+      if (patientAgeGroup != null && 
+          record.data.filters.patientAgeGroup != null &&
+          record.data.filters.patientAgeGroup != patientAgeGroup) {
+        return false;
+      }
+
+      // Filter by date range
+      if (startDate != null && record.data.timeRange.start.isBefore(startDate)) {
+        return false;
+      }
+      if (endDate != null && record.data.timeRange.end.isAfter(endDate)) {
+        return false;
+      }
+
+      return true;
+    }).toList();
+
+    return filtered;
+  }
+
+  // Create a new clinical analytics record
+  Future<ClinicalAnalyticsModel> createAnalyticsRecord({
+    required String metricType,
+    required TimeRange timeRange,
+    required dynamic value,
+    AnalyticsFilters? filters,
+  }) async {
+    // TODO: Replace with actual API call when backend is ready
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    final now = DateTime.now();
+    final record = ClinicalAnalyticsModel(
+      id: 'analytics_${now.millisecondsSinceEpoch}',
+      metricType: metricType,
+      data: AnalyticsDataRecord(
+        timeRange: timeRange,
+        value: value,
+        filters: filters ?? AnalyticsFilters(),
+      ),
+      generatedAt: now,
+      updatedAt: now,
+    );
+
+    _mockAnalyticsRecords.add(record);
+    return record;
+  }
+
+  // Update an existing analytics record
+  Future<bool> updateAnalyticsRecord(
+    String id,
+    dynamic newValue,
+  ) async {
+    // TODO: Replace with actual API call when backend is ready
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    final index = _mockAnalyticsRecords.indexWhere((r) => r.id == id);
+    if (index != -1) {
+      final oldRecord = _mockAnalyticsRecords[index];
+      _mockAnalyticsRecords[index] = ClinicalAnalyticsModel(
+        id: oldRecord.id,
+        metricType: oldRecord.metricType,
+        data: AnalyticsDataRecord(
+          timeRange: oldRecord.data.timeRange,
+          value: newValue,
+          filters: oldRecord.data.filters,
+        ),
+        generatedAt: oldRecord.generatedAt,
+        updatedAt: DateTime.now(),
+      );
+      return true;
+    }
+    return false;
+  }
+
+  // Export analytics data as CSV
+  Future<String> exportAnalyticsAsCSV({
+    String? metricType,
+    AnalyticsFilters? filters,
+  }) async {
+    // TODO: Implement actual CSV export when backend is ready
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    final records = await getAnalytics(
+      metricType: metricType,
+      clinicianId: filters?.clinicianId,
+      location: filters?.location,
+      patientAgeGroup: filters?.patientAgeGroup,
+    );
+
+    // Mock CSV generation
+    StringBuffer csv = StringBuffer();
+    csv.writeln('ID,Metric Type,Start Date,End Date,Value,Clinician ID,Location,Age Group,Generated At');
+
+    for (var record in records) {
+      csv.writeln(
+        '${record.id},'
+        '${record.metricType},'
+        '${record.data.timeRange.start.toIso8601String()},'
+        '${record.data.timeRange.end.toIso8601String()},'
+        '${record.data.value},'
+        '${record.data.filters.clinicianId ?? ""},'
+        '${record.data.filters.location ?? ""},'
+        '${record.data.filters.patientAgeGroup ?? ""},'
+        '${record.generatedAt.toIso8601String()}'
+      );
+    }
+
+    return csv.toString();
+  }
+
+  // Export analytics data as PDF (mock - returns path/URL)
+  Future<String> exportAnalyticsAsPDF({
+    String? metricType,
+    AnalyticsFilters? filters,
+  }) async {
+    // TODO: Implement actual PDF export when backend is ready
     await Future.delayed(const Duration(milliseconds: 800));
 
-    // Fetch all data
-    final patients = await _patientService.getAllPatients();
-    final clinicians = await _clinicianService.getAllClinicians();
-    final appointments = await _appointmentService.getAllAppointments();
-    final treatmentPlans = await _treatmentPlanService.getAllTreatmentPlans();
-
-    // Calculate overview
-    final overview = _calculateOverview(
-      patients.length,
-      clinicians.length,
-      appointments,
-      treatmentPlans,
-    );
-
-    // Calculate appointment statistics
-    final appointmentStats = _calculateAppointmentStatistics(appointments);
-
-    // Calculate treatment plan statistics
-    final treatmentPlanStats = _calculateTreatmentPlanStatistics(treatmentPlans);
-
-    // Calculate demographics
-    final demographics = _calculateDemographics(patients);
-
-    // Get top diagnoses
-    final topDiagnoses = _getTopDiagnoses(treatmentPlans);
-
-    // Calculate monthly revenue
-    final monthlyRevenue = _calculateMonthlyRevenue(appointments);
-
-    // Get appointment trends
-    final appointmentTrends = _getAppointmentTrends(appointments);
-
-    return AnalyticsData(
-      overview: overview,
-      appointmentStats: appointmentStats,
-      treatmentPlanStats: treatmentPlanStats,
-      demographics: demographics,
-      topDiagnoses: topDiagnoses,
-      monthlyRevenue: monthlyRevenue,
-      appointmentTrends: appointmentTrends,
-    );
+    // Mock PDF generation - return a mock file path
+    return '/exports/analytics_${DateTime.now().millisecondsSinceEpoch}.pdf';
   }
 
-  // Calculate overview statistics
-  AnalyticsOverview _calculateOverview(
-    int totalPatients,
-    int totalClinicians,
-    List<dynamic> appointments,
-    List<dynamic> treatmentPlans,
-  ) {
-    final activeAppointments = appointments
-        .where((a) => a.status == AppointmentStatus.scheduled || 
-                     a.status == AppointmentStatus.confirmed)
-        .length;
-
-    final completedAppointments = appointments
-        .where((a) => a.status == AppointmentStatus.completed)
-        .length;
-
-    final activeTreatmentPlans = treatmentPlans
-        .where((t) => t.status == TreatmentPlanStatus.active)
-        .length;
-
-    // Calculate total revenue
-    double totalRevenue = 0;
-    double monthlyRevenue = 0;
+  // Initialize mock analytics records
+  Future<void> _initializeMockAnalyticsRecords() async {
     final now = DateTime.now();
-    final currentMonth = now.month;
-    final currentYear = now.year;
+    final lastMonth = DateTime(now.year, now.month - 1, 1);
+    final lastMonthEnd = DateTime(now.year, now.month, 0);
 
-    for (var appointment in appointments) {
-      if (appointment.status == AppointmentStatus.completed) {
-        totalRevenue += appointment.billing.amount;
-        
-        if (appointment.scheduledAt.month == currentMonth &&
-            appointment.scheduledAt.year == currentYear) {
-          monthlyRevenue += appointment.billing.amount;
-        }
-      }
-    }
+    _mockAnalyticsRecords.addAll([
+      // Appointment Volume
+      ClinicalAnalyticsModel(
+        id: 'analytics_1',
+        metricType: MetricType.appointmentVolume,
+        data: AnalyticsDataRecord(
+          timeRange: TimeRange(start: lastMonth, end: lastMonthEnd),
+          value: 245, // Total appointments
+          filters: AnalyticsFilters(),
+        ),
+        generatedAt: now,
+      ),
 
-    return AnalyticsOverview(
-      totalPatients: totalPatients,
-      totalClinicians: totalClinicians,
-      totalAppointments: appointments.length,
-      totalTreatmentPlans: treatmentPlans.length,
-      activeAppointments: activeAppointments,
-      completedAppointments: completedAppointments,
-      activeTreatmentPlans: activeTreatmentPlans,
-      totalRevenue: totalRevenue,
-      monthlyRevenue: monthlyRevenue,
-    );
-  }
+      // Treatment Outcomes
+      ClinicalAnalyticsModel(
+        id: 'analytics_2',
+        metricType: MetricType.treatmentOutcomes,
+        data: AnalyticsDataRecord(
+          timeRange: TimeRange(start: lastMonth, end: lastMonthEnd),
+          value: {
+            'successful': 180,
+            'ongoing': 45,
+            'unsuccessful': 12,
+          },
+          filters: AnalyticsFilters(),
+        ),
+        generatedAt: now,
+      ),
 
-  // Calculate appointment statistics by status
-  AppointmentStatistics _calculateAppointmentStatistics(List<dynamic> appointments) {
-    int scheduled = 0;
-    int confirmed = 0;
-    int completed = 0;
-    int cancelled = 0;
-    int noShow = 0;
+      // Revenue Analysis by location
+      ClinicalAnalyticsModel(
+        id: 'analytics_3',
+        metricType: MetricType.revenueAnalysis,
+        data: AnalyticsDataRecord(
+          timeRange: TimeRange(start: lastMonth, end: lastMonthEnd),
+          value: 125450.75,
+          filters: AnalyticsFilters(location: 'Main Clinic'),
+        ),
+        generatedAt: now,
+      ),
 
-    for (var appointment in appointments) {
-      switch (appointment.status) {
-        case AppointmentStatus.scheduled:
-          scheduled++;
-          break;
-        case AppointmentStatus.confirmed:
-          confirmed++;
-          break;
-        case AppointmentStatus.completed:
-          completed++;
-          break;
-        case AppointmentStatus.cancelled:
-          cancelled++;
-          break;
-        case AppointmentStatus.noShow:
-          noShow++;
-          break;
-      }
-    }
+      // Patient Demographics by age group
+      ClinicalAnalyticsModel(
+        id: 'analytics_4',
+        metricType: MetricType.patientDemographics,
+        data: AnalyticsDataRecord(
+          timeRange: TimeRange(start: lastMonth, end: lastMonthEnd),
+          value: 85, // Patients in age group
+          filters: AnalyticsFilters(patientAgeGroup: PatientAgeGroup.adult),
+        ),
+        generatedAt: now,
+      ),
 
-    return AppointmentStatistics(
-      scheduled: scheduled,
-      confirmed: confirmed,
-      completed: completed,
-      cancelled: cancelled,
-      noShow: noShow,
-    );
-  }
-
-  // Calculate treatment plan statistics by status
-  TreatmentPlanStatistics _calculateTreatmentPlanStatistics(List<dynamic> treatmentPlans) {
-    int active = 0;
-    int completed = 0;
-    int onHold = 0;
-    int cancelled = 0;
-
-    for (var plan in treatmentPlans) {
-      switch (plan.status) {
-        case TreatmentPlanStatus.active:
-          active++;
-          break;
-        case TreatmentPlanStatus.completed:
-          completed++;
-          break;
-        case TreatmentPlanStatus.onHold:
-          onHold++;
-          break;
-        case TreatmentPlanStatus.cancelled:
-          cancelled++;
-          break;
-      }
-    }
-
-    return TreatmentPlanStatistics(
-      active: active,
-      completed: completed,
-      onHold: onHold,
-      cancelled: cancelled,
-    );
-  }
-
-  // Calculate patient demographics
-  PatientDemographics _calculateDemographics(List<dynamic> patients) {
-    // Mock data since PatientModel structure varies
-    int male = 0;
-    int female = 0;
-    int other = 0;
-    
-    Map<String, int> ageGroups = {
-      '0-18': 0,
-      '19-35': 0,
-      '36-50': 0,
-      '51-65': 0,
-      '65+': 0,
-    };
-
-    final total = patients.length;
-
-    // Generate mock gender distribution
-    male = (total * 0.45).round(); 
-    female = (total * 0.50).round();
-    other = total - male - female;
-
-    // Generate mock age distribution
-    if (total > 0) {
-      ageGroups['0-18'] = (total * 0.10).round();
-      ageGroups['19-35'] = (total * 0.30).round();
-      ageGroups['36-50'] = (total * 0.25).round();
-      ageGroups['51-65'] = (total * 0.20).round();
-      ageGroups['65+'] = total - (ageGroups['0-18']! + ageGroups['19-35']! + 
-                                  ageGroups['36-50']! + ageGroups['51-65']!);
-    }
-
-    return PatientDemographics(
-      male: male,
-      female: female,
-      other: other,
-      ageGroups: ageGroups,
-    );
-  }
-  // Get top diagnoses from treatment plans
-  List<TopDiagnosis> _getTopDiagnoses(List<dynamic> treatmentPlans) {
-    Map<String, int> diagnosisCount = {};
-
-    for (var plan in treatmentPlans) {
-      final diagnosis = plan.diagnosis;
-      diagnosisCount[diagnosis] = (diagnosisCount[diagnosis] ?? 0) + 1;
-    }
-
-    // Convert to list and sort by count
-    final topDiagnoses = diagnosisCount.entries
-        .map((entry) => TopDiagnosis(
-              diagnosis: entry.key,
-              count: entry.value,
-            ))
-        .toList();
-
-    topDiagnoses.sort((a, b) => b.count.compareTo(a.count));
-
-    // Return top 5
-    return topDiagnoses.take(5).toList();
-  }
-
-  // Calculate monthly revenue for last 6 months
-  List<MonthlyRevenue> _calculateMonthlyRevenue(List<dynamic> appointments) {
-    final now = DateTime.now();
-    Map<String, double> monthlyData = {};
-
-    // Initialize last 6 months
-    for (int i = 5; i >= 0; i--) {
-      final date = DateTime(now.year, now.month - i, 1);
-      final monthKey = '${_getMonthName(date.month)} ${date.year}';
-      monthlyData[monthKey] = 0;
-    }
-
-    // Calculate revenue for completed appointments
-    for (var appointment in appointments) {
-      if (appointment.status == AppointmentStatus.completed) {
-        final date = appointment.scheduledAt;
-        final monthKey = '${_getMonthName(date.month)} ${date.year}';
-        
-        if (monthlyData.containsKey(monthKey)) {
-          monthlyData[monthKey] = (monthlyData[monthKey] ?? 0) + appointment.billing.amount;
-        }
-      }
-    }
-
-    return monthlyData.entries
-        .map((entry) => MonthlyRevenue(
-              month: entry.key,
-              revenue: entry.value,
-            ))
-        .toList();
-  }
-
-  // Get appointment trends for last 7 days
-  List<AppointmentTrend> _getAppointmentTrends(List<dynamic> appointments) {
-    final now = DateTime.now();
-    Map<String, int> dailyData = {};
-
-    // Initialize last 7 days
-    for (int i = 6; i >= 0; i--) {
-      final date = now.subtract(Duration(days: i));
-      final dateKey = '${date.day}/${date.month}';
-      dailyData[dateKey] = 0;
-    }
-
-    // Count appointments per day
-    for (var appointment in appointments) {
-      final date = appointment.scheduledAt;
-      final dateKey = '${date.day}/${date.month}';
-      
-      if (dailyData.containsKey(dateKey)) {
-        dailyData[dateKey] = (dailyData[dateKey] ?? 0) + 1;
-      }
-    }
-
-    return dailyData.entries
-        .map((entry) => AppointmentTrend(
-              date: entry.key,
-              count: entry.value,
-            ))
-        .toList();
-  }
-
-  // Helper to get month name
-  String _getMonthName(int month) {
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
-    return months[month - 1];
-  }
-
-  // Get analytics by date range
-  Future<AnalyticsData> getAnalyticsByDateRange(
-    DateTime startDate,
-    DateTime endDate,
-  ) async {
-    // For now, return all data (can be filtered later)
-    return await getAnalyticsData();
-  }
-
-  // Get department-specific analytics
-  Future<AnalyticsData> getAnalyticsByDepartment(String department) async {
-    // For now, return all data (can be filtered later)
-    return await getAnalyticsData();
+      // Clinician Performance
+      ClinicalAnalyticsModel(
+        id: 'analytics_5',
+        metricType: MetricType.clinicianPerformance,
+        data: AnalyticsDataRecord(
+          timeRange: TimeRange(start: lastMonth, end: lastMonthEnd),
+          value: {
+            'appointments_completed': 65,
+            'patient_satisfaction': 4.7,
+            'treatment_success_rate': 92.5,
+          },
+          filters: AnalyticsFilters(clinicianId: '1'),
+        ),
+        generatedAt: now,
+      ),
+    ]);
   }
 }

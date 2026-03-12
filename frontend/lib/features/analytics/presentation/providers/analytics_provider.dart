@@ -2,81 +2,173 @@ import 'package:flutter/material.dart';
 import 'package:frontend/features/analytics/data/models/analytics_model.dart';
 import 'package:frontend/features/analytics/data/services/analytics_service.dart';
 
-// Analytics provider for state management
+// Analytics provider for state management with ClinicalAnalytics model
 class AnalyticsProvider extends ChangeNotifier {
   final AnalyticsService _analyticsService = AnalyticsService();
 
-  AnalyticsData? _analyticsData;
   bool _isLoading = false;
   String? _errorMessage;
-  DateTime? _startDate;
-  DateTime? _endDate;
 
-  // Getters
-  AnalyticsData? get analyticsData => _analyticsData;
+  // ClinicalAnalytics properties
+  List<ClinicalAnalyticsModel> _clinicalAnalyticsRecords = [];
+  String? _selectedMetricType;
+  AnalyticsFilters? _analyticsFilters;
+
+  // Common getters
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
-  DateTime? get startDate => _startDate;
-  DateTime? get endDate => _endDate;
 
-  // Quick access getters
-  AnalyticsOverview? get overview => _analyticsData?.overview;
-  AppointmentStatistics? get appointmentStats => _analyticsData?.appointmentStats;
-  TreatmentPlanStatistics? get treatmentPlanStats => _analyticsData?.treatmentPlanStats;
-  PatientDemographics? get demographics => _analyticsData?.demographics;
-  List<TopDiagnosis> get topDiagnoses => _analyticsData?.topDiagnoses ?? [];
-  List<MonthlyRevenue> get monthlyRevenue => _analyticsData?.monthlyRevenue ?? [];
-  List<AppointmentTrend> get appointmentTrends => _analyticsData?.appointmentTrends ?? [];
+  // Getters for clinical analytics
+  List<ClinicalAnalyticsModel> get clinicalAnalyticsRecords => _clinicalAnalyticsRecords;
+  String? get selectedMetricType => _selectedMetricType;
+  AnalyticsFilters? get analyticsFilters => _analyticsFilters;
 
-  // Fetch all analytics data
-  Future<void> fetchAnalytics() async {
+  // Fetch clinical analytics with filters
+  Future<void> fetchClinicalAnalytics({
+    String? metricType,
+    String? clinicianId,
+    String? location,
+    String? patientAgeGroup,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
     _setLoading(true);
     _clearError();
 
     try {
-      _analyticsData = await _analyticsService.getAnalyticsData();
+      _clinicalAnalyticsRecords = await _analyticsService.getAnalytics(
+        metricType: metricType,
+        clinicianId: clinicianId,
+        location: location,
+        patientAgeGroup: patientAgeGroup,
+        startDate: startDate,
+        endDate: endDate,
+      );
+      _selectedMetricType = metricType;
+      _analyticsFilters = AnalyticsFilters(
+        clinicianId: clinicianId,
+        location: location,
+        patientAgeGroup: patientAgeGroup,
+      );
       _setLoading(false);
     } catch (e) {
-      _setError('Failed to load analytics: ${e.toString()}');
+      _setError('Failed to load clinical analytics: ${e.toString()}');
       _setLoading(false);
     }
   }
 
-  // Fetch analytics by date range
-  Future<void> fetchAnalyticsByDateRange(DateTime start, DateTime end) async {
+  // Create a new analytics record
+  Future<ClinicalAnalyticsModel?> createAnalyticsRecord({
+    required String metricType,
+    required TimeRange timeRange,
+    required dynamic value,
+    AnalyticsFilters? filters,
+  }) async {
     _setLoading(true);
     _clearError();
 
     try {
-      _startDate = start;
-      _endDate = end;
-      _analyticsData = await _analyticsService.getAnalyticsByDateRange(start, end);
+      final record = await _analyticsService.createAnalyticsRecord(
+        metricType: metricType,
+        timeRange: timeRange,
+        value: value,
+        filters: filters,
+      );
+      _clinicalAnalyticsRecords.add(record);
       _setLoading(false);
+      return record;
     } catch (e) {
-      _setError('Failed to load analytics: ${e.toString()}');
+      _setError('Failed to create analytics record: ${e.toString()}');
       _setLoading(false);
+      return null;
     }
   }
 
-  // Fetch analytics by department
-  Future<void> fetchAnalyticsByDepartment(String department) async {
+  // Update an analytics record
+  Future<bool> updateAnalyticsRecord(String id, dynamic newValue) async {
     _setLoading(true);
     _clearError();
 
     try {
-      _analyticsData = await _analyticsService.getAnalyticsByDepartment(department);
+      final success = await _analyticsService.updateAnalyticsRecord(id, newValue);
+      if (success) {
+        // Refresh the records
+        await fetchClinicalAnalytics(
+          metricType: _selectedMetricType,
+          clinicianId: _analyticsFilters?.clinicianId,
+          location: _analyticsFilters?.location,
+          patientAgeGroup: _analyticsFilters?.patientAgeGroup,
+        );
+      }
       _setLoading(false);
+      return success;
     } catch (e) {
-      _setError('Failed to load analytics: ${e.toString()}');
+      _setError('Failed to update analytics record: ${e.toString()}');
       _setLoading(false);
+      return false;
     }
   }
 
-  // Clear date filter
-  void clearDateFilter() {
-    _startDate = null;
-    _endDate = null;
-    fetchAnalytics();
+  // Export analytics as CSV
+  Future<String?> exportAnalyticsAsCSV({
+    String? metricType,
+    AnalyticsFilters? filters,
+  }) async {
+    _setLoading(true);
+    _clearError();
+
+    try {
+      final csvData = await _analyticsService.exportAnalyticsAsCSV(
+        metricType: metricType,
+        filters: filters,
+      );
+      _setLoading(false);
+      return csvData;
+    } catch (e) {
+      _setError('Failed to export analytics as CSV: ${e.toString()}');
+      _setLoading(false);
+      return null;
+    }
+  }
+
+  // Export analytics as PDF
+  Future<String?> exportAnalyticsAsPDF({
+    String? metricType,
+    AnalyticsFilters? filters,
+  }) async {
+    _setLoading(true);
+    _clearError();
+
+    try {
+      final pdfPath = await _analyticsService.exportAnalyticsAsPDF(
+        metricType: metricType,
+        filters: filters,
+      );
+      _setLoading(false);
+      return pdfPath;
+    } catch (e) {
+      _setError('Failed to export analytics as PDF: ${e.toString()}');
+      _setLoading(false);
+      return null;
+    }
+  }
+
+  // Set metric type filter
+  void setMetricTypeFilter(String? metricType) {
+    _selectedMetricType = metricType;
+    fetchClinicalAnalytics(
+      metricType: metricType,
+      clinicianId: _analyticsFilters?.clinicianId,
+      location: _analyticsFilters?.location,
+      patientAgeGroup: _analyticsFilters?.patientAgeGroup,
+    );
+  }
+
+  // Clear all filters
+  void clearAllFilters() {
+    _selectedMetricType = null;
+    _analyticsFilters = null;
+    fetchClinicalAnalytics();
   }
 
   // Private helper methods

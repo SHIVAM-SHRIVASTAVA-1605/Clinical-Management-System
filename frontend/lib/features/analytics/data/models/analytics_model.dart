@@ -1,230 +1,173 @@
-// Analytics Overview Model
-class AnalyticsOverview {
-  final int totalPatients;
-  final int totalClinicians;
-  final int totalAppointments;
-  final int totalTreatmentPlans;
-  final int activeAppointments;
-  final int completedAppointments;
-  final int activeTreatmentPlans;
-  final double totalRevenue;
-  final double monthlyRevenue;
+// ClinicalAnalytics Model - Main analytics record model
+class ClinicalAnalyticsModel {
+  final String id;
+  final String metricType;
+  final AnalyticsDataRecord data;
+  final DateTime generatedAt;
+  final DateTime? updatedAt;
 
-  AnalyticsOverview({
-    required this.totalPatients,
-    required this.totalClinicians,
-    required this.totalAppointments,
-    required this.totalTreatmentPlans,
-    required this.activeAppointments,
-    required this.completedAppointments,
-    required this.activeTreatmentPlans,
-    required this.totalRevenue,
-    required this.monthlyRevenue,
+  ClinicalAnalyticsModel({
+    required this.id,
+    required this.metricType,
+    required this.data,
+    required this.generatedAt,
+    this.updatedAt,
   });
 
-  factory AnalyticsOverview.fromJson(Map<String, dynamic> json) {
-    return AnalyticsOverview(
-      totalPatients: json['totalPatients'] ?? 0,
-      totalClinicians: json['totalClinicians'] ?? 0,
-      totalAppointments: json['totalAppointments'] ?? 0,
-      totalTreatmentPlans: json['totalTreatmentPlans'] ?? 0,
-      activeAppointments: json['activeAppointments'] ?? 0,
-      completedAppointments: json['completedAppointments'] ?? 0,
-      activeTreatmentPlans: json['activeTreatmentPlans'] ?? 0,
-      totalRevenue: (json['totalRevenue'] ?? 0).toDouble(),
-      monthlyRevenue: (json['monthlyRevenue'] ?? 0).toDouble(),
+  factory ClinicalAnalyticsModel.fromJson(Map<String, dynamic> json) {
+    return ClinicalAnalyticsModel(
+      id: json['id'] ?? json['_id'] ?? '',
+      metricType: json['metricType'] ?? '',
+      data: AnalyticsDataRecord.fromJson(json['data'] ?? {}),
+      generatedAt: json['generatedAt'] != null
+          ? DateTime.parse(json['generatedAt'])
+          : DateTime.now(),
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.parse(json['updatedAt'])
+          : null,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'metricType': metricType,
+      'data': data.toJson(),
+      'generatedAt': generatedAt.toIso8601String(),
+      'updatedAt': updatedAt?.toIso8601String(),
+    };
   }
 }
 
-// Appointment Statistics by Status
-class AppointmentStatistics {
-  final int scheduled;
-  final int confirmed;
-  final int completed;
-  final int cancelled;
-  final int noShow;
+// Analytics Data Record
+class AnalyticsDataRecord {
+  final TimeRange timeRange;
+  final dynamic value; // Can be number, object, or structured data
+  final AnalyticsFilters filters;
 
-  AppointmentStatistics({
-    required this.scheduled,
-    required this.confirmed,
-    required this.completed,
-    required this.cancelled,
-    required this.noShow,
+  AnalyticsDataRecord({
+    required this.timeRange,
+    required this.value,
+    required this.filters,
   });
 
-  int get total => scheduled + confirmed + completed + cancelled + noShow;
-
-  double getPercentage(int value) {
-    if (total == 0) return 0;
-    return (value / total) * 100;
+  factory AnalyticsDataRecord.fromJson(Map<String, dynamic> json) {
+    return AnalyticsDataRecord(
+      timeRange: TimeRange.fromJson(json['timeRange'] ?? {}),
+      value: json['value'], // Dynamic - can be anything
+      filters: AnalyticsFilters.fromJson(json['filters'] ?? {}),
+    );
   }
 
-  factory AppointmentStatistics.fromJson(Map<String, dynamic> json) {
-    return AppointmentStatistics(
-      scheduled: json['scheduled'] ?? 0,
-      confirmed: json['confirmed'] ?? 0,
-      completed: json['completed'] ?? 0,
-      cancelled: json['cancelled'] ?? 0,
-      noShow: json['noShow'] ?? 0,
-    );
+  Map<String, dynamic> toJson() {
+    return {
+      'timeRange': timeRange.toJson(),
+      'value': value,
+      'filters': filters.toJson(),
+    };
   }
 }
 
-// Treatment Plan Statistics by Status
-class TreatmentPlanStatistics {
-  final int active;
-  final int completed;
-  final int onHold;
-  final int cancelled;
+// Time Range
+class TimeRange {
+  final DateTime start;
+  final DateTime end;
 
-  TreatmentPlanStatistics({
-    required this.active,
-    required this.completed,
-    required this.onHold,
-    required this.cancelled,
+  TimeRange({
+    required this.start,
+    required this.end,
   });
 
-  int get total => active + completed + onHold + cancelled;
-
-  double getPercentage(int value) {
-    if (total == 0) return 0;
-    return (value / total) * 100;
-  }
-
-  factory TreatmentPlanStatistics.fromJson(Map<String, dynamic> json) {
-    return TreatmentPlanStatistics(
-      active: json['active'] ?? 0,
-      completed: json['completed'] ?? 0,
-      onHold: json['onHold'] ?? 0,
-      cancelled: json['cancelled'] ?? 0,
+  factory TimeRange.fromJson(Map<String, dynamic> json) {
+    return TimeRange(
+      start: json['start'] != null
+          ? DateTime.parse(json['start'])
+          : DateTime.now(),
+      end: json['end'] != null
+          ? DateTime.parse(json['end'])
+          : DateTime.now(),
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'start': start.toIso8601String(),
+      'end': end.toIso8601String(),
+    };
+  }
+
+  int get durationInDays => end.difference(start).inDays;
 }
 
-// Patient Demographics
-class PatientDemographics {
-  final int male;
-  final int female;
-  final int other;
-  final Map<String, int> ageGroups;
+// Analytics Filters
+class AnalyticsFilters {
+  final String? clinicianId;
+  final String? location;
+  final String? patientAgeGroup;
 
-  PatientDemographics({
-    required this.male,
-    required this.female,
-    required this.other,
-    required this.ageGroups,
+  AnalyticsFilters({
+    this.clinicianId,
+    this.location,
+    this.patientAgeGroup,
   });
 
-  int get total => male + female + other;
-
-  double getGenderPercentage(int value) {
-    if (total == 0) return 0;
-    return (value / total) * 100;
-  }
-
-  factory PatientDemographics.fromJson(Map<String, dynamic> json) {
-    return PatientDemographics(
-      male: json['male'] ?? 0,
-      female: json['female'] ?? 0,
-      other: json['other'] ?? 0,
-      ageGroups: Map<String, int>.from(json['ageGroups'] ?? {}),
+  factory AnalyticsFilters.fromJson(Map<String, dynamic> json) {
+    return AnalyticsFilters(
+      clinicianId: json['clinicianId'],
+      location: json['location'],
+      patientAgeGroup: json['patientAgeGroup'],
     );
   }
-}
 
-// Top Diagnosis
-class TopDiagnosis {
-  final String diagnosis;
-  final int count;
-
-  TopDiagnosis({
-    required this.diagnosis,
-    required this.count,
-  });
-
-  factory TopDiagnosis.fromJson(Map<String, dynamic> json) {
-    return TopDiagnosis(
-      diagnosis: json['diagnosis'] ?? '',
-      count: json['count'] ?? 0,
-    );
+  Map<String, dynamic> toJson() {
+    return {
+      'clinicianId': clinicianId,
+      'location': location,
+      'patientAgeGroup': patientAgeGroup,
+    };
   }
+
+  bool get hasFilters =>
+      clinicianId != null || location != null || patientAgeGroup != null;
 }
 
-// Revenue by Month
-class MonthlyRevenue {
-  final String month;
-  final double revenue;
+// Metric Type Constants
+class MetricType {
+  static const String appointmentVolume = 'Appointment Volume';
+  static const String treatmentOutcomes = 'Treatment Outcomes';
+  static const String patientSatisfaction = 'Patient Satisfaction';
+  static const String revenueAnalysis = 'Revenue Analysis';
+  static const String clinicianPerformance = 'Clinician Performance';
+  static const String patientDemographics = 'Patient Demographics';
 
-  MonthlyRevenue({
-    required this.month,
-    required this.revenue,
-  });
-
-  factory MonthlyRevenue.fromJson(Map<String, dynamic> json) {
-    return MonthlyRevenue(
-      month: json['month'] ?? '',
-      revenue: (json['revenue'] ?? 0).toDouble(),
-    );
-  }
+  static List<String> get all => [
+        appointmentVolume,
+        treatmentOutcomes,
+        patientSatisfaction,
+        revenueAnalysis,
+        clinicianPerformance,
+        patientDemographics,
+      ];
 }
 
-// Appointments Over Time
-class AppointmentTrend {
-  final String date;
-  final int count;
+// Patient Age Group Constants
+class PatientAgeGroup {
+  static const String infant = '0-2';
+  static const String child = '3-12';
+  static const String teen = '13-18';
+  static const String youngAdult = '19-30';
+  static const String adult = '31-50';
+  static const String middleAge = '51-65';
+  static const String senior = '65+';
 
-  AppointmentTrend({
-    required this.date,
-    required this.count,
-  });
-
-  factory AppointmentTrend.fromJson(Map<String, dynamic> json) {
-    return AppointmentTrend(
-      date: json['date'] ?? '',
-      count: json['count'] ?? 0,
-    );
-  }
+  static List<String> get all => [
+        infant,
+        child,
+        teen,
+        youngAdult,
+        adult,
+        middleAge,
+        senior,
+      ];
 }
 
-// Complete Analytics Data
-class AnalyticsData {
-  final AnalyticsOverview overview;
-  final AppointmentStatistics appointmentStats;
-  final TreatmentPlanStatistics treatmentPlanStats;
-  final PatientDemographics demographics;
-  final List<TopDiagnosis> topDiagnoses;
-  final List<MonthlyRevenue> monthlyRevenue;
-  final List<AppointmentTrend> appointmentTrends;
-
-  AnalyticsData({
-    required this.overview,
-    required this.appointmentStats,
-    required this.treatmentPlanStats,
-    required this.demographics,
-    required this.topDiagnoses,
-    required this.monthlyRevenue,
-    required this.appointmentTrends,
-  });
-
-  factory AnalyticsData.fromJson(Map<String, dynamic> json) {
-    return AnalyticsData(
-      overview: AnalyticsOverview.fromJson(json['overview'] ?? {}),
-      appointmentStats: AppointmentStatistics.fromJson(json['appointmentStats'] ?? {}),
-      treatmentPlanStats: TreatmentPlanStatistics.fromJson(json['treatmentPlanStats'] ?? {}),
-      demographics: PatientDemographics.fromJson(json['demographics'] ?? {}),
-      topDiagnoses: (json['topDiagnoses'] as List?)
-              ?.map((item) => TopDiagnosis.fromJson(item))
-              .toList() ??
-          [],
-      monthlyRevenue: (json['monthlyRevenue'] as List?)
-              ?.map((item) => MonthlyRevenue.fromJson(item))
-              .toList() ??
-          [],
-      appointmentTrends: (json['appointmentTrends'] as List?)
-              ?.map((item) => AppointmentTrend.fromJson(item))
-              .toList() ??
-          [],
-    );
-  }
-}
