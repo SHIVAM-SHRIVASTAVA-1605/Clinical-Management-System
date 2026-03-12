@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/features/appointments/presentations/screens/appointment_details_screen.dart';
+import 'package:frontend/features/appointments/presentations/screens/appointments_list_screen.dart';
+import 'package:frontend/features/appointments/presentations/screens/book_appointment_screen.dart';
 import 'package:frontend/features/auth/presentations/screens/login_screen.dart';
 import 'package:frontend/features/auth/presentations/screens/register_screen.dart';
 import 'package:frontend/features/clinicians/presentation/screens/clinician_details_screen.dart';
@@ -31,7 +34,6 @@ class RouteManager {
       case AppRoutes.patientDashboard:
         return MaterialPageRoute(builder: (_) => const PatientDashboardScreen());
 
-      // TODO: Add more routes as features are built
       case AppRoutes.clinicians:
         return MaterialPageRoute(builder: (_) => const CliniciansListScreen());
       
@@ -58,6 +60,23 @@ class RouteManager {
         );
         
       case AppRoutes.appointments:
+        return MaterialPageRoute(builder: (_) => const AppointmentsListScreen());
+
+      case AppRoutes.appointmentDetails:
+        final appointmentId = settings.arguments as String?;
+        if (appointmentId == null) {
+          return MaterialPageRoute(builder: (_) => const _NotFoundScreen());
+        }
+        return MaterialPageRoute(
+          builder: (_) => AppointmentDetailsScreen(appointmentId: appointmentId),
+        );
+
+        case AppRoutes.bookAppointment:
+          return MaterialPageRoute(
+            builder: (_) => BookAppointmentScreen(),
+          );
+
+      // TODO: Add more routes as features are built
       case AppRoutes.treatmentPlans:
       case AppRoutes.analytics:
       case AppRoutes.profile:
