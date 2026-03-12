@@ -16,6 +16,29 @@ class AuthProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   bool get isAuthenticated => _user != null;
 
+  // Get pending clinicians (admin only)
+  List<UserModel> getPendingClinicians() {
+    return _authService.getPendingClinicians();
+  }
+
+  // Verify clinician (admin only)
+  Future<bool> verifyClinician(String userId) async {
+    final success = await _authService.verifyClinician(userId);
+    if (success) {
+      notifyListeners();
+    }
+    return success;
+  }
+
+  // Reject clinician (admin only)
+  Future<bool> rejectClinician(String userId) async {
+    final success = await _authService.rejectClinician(userId);
+    if (success) {
+      notifyListeners();
+    }
+    return success;
+  }
+
   // login method
   Future<bool> login({
     required String email,
@@ -47,38 +70,46 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // register method
-  Future<bool> register({
+  // register method - returns full response map
+  Future<Map<String, dynamic>> register({
     required String name,
     required String email,
     required String password,
     String? phone,
+    required String role,
   }) async {
     _setLoading(true);
     _clearError();
 
     try {
       final response = await _authService.register(
-        name: name, 
-        email: email, 
+        name: name,
+        email: email,
         password: password,
-        phone: phone
+        phone: phone,
+        role: role,
       );
 
       if (response['success'] == true) {
-        _user = UserModel.fromJson(response['user']);
+        // Only set user if they don't need verification
+        if (response['requiresVerification'] != true && response['user'] != null) {
+          _user = UserModel.fromJson(response['user']);
+        }
         _setLoading(false);
         notifyListeners();
-        return true;
       } else {
         _setError(response['message'] ?? 'Registration failed');
         _setLoading(false);
-        return false;
       }
+
+      return response;
     } catch (e) {
       _setError('Registration failed: ${e.toString()}');
       _setLoading(false);
-      return false;
+      return {
+        'success': false,
+        'message': e.toString(),
+      };
     }
   }
 

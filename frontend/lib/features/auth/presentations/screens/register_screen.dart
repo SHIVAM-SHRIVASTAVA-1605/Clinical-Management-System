@@ -25,6 +25,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _confirmPasswordController = TextEditingController();
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  String _selectedRole = 'patient'; // Default role
 
   @override
   void dispose() {
@@ -37,36 +38,50 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _handleRegister() async {
-    if(_formKey.currentState!.validate()) {
+    if (_formKey.currentState!.validate()) {
       final authProvider = context.read<AuthProvider>();
 
-      final success = await authProvider. register(
+      final result = await authProvider.register(
         name: _nameController.text.trim(),
         email: _emailController.text.trim(),
         password: _passwordController.text,
-        phone: _phoneController.text.trim().isEmpty ? null : _phoneController.text.trim(),
+        phone: _phoneController.text.trim().isEmpty
+            ? null
+            : _phoneController.text.trim(),
+        role: _selectedRole,
       );
 
-      if(!mounted) return;
+      if (!mounted) return;
 
-      if(success) {
-        ToastHelper.showSuccess(context, 'Registration Successful!');
+      if (result['success']) {
+        // Check if clinician needs verification
+        if (result['requiresVerification'] == true) {
+          ToastHelper.showSuccess(
+            context,
+            'Registration successful! Your account is pending admin verification.',
+          );
+          // Navigate back to login
+          Navigator.pushReplacementNamed(context, AppRoutes.login);
+        } else {
+          // Patient registered successfully
+          ToastHelper.showSuccess(context, 'Registration Successful!');
 
-        // Navigate to role-based dashboard
-        final user = authProvider.user;
-        String route = AppRoutes.patientDashboard;
+          // Navigate to appropriate dashboard
+          final user = authProvider.user;
+          String route = AppRoutes.patientDashboard;
 
-        if(user?.isAdmin == true) {
-          route = AppRoutes.adminDashboard;
-        } else if(user?.isClinician == true) {
-          route = AppRoutes.clinicianDashboard;
+          if (user?.isAdmin == true) {
+            route = AppRoutes.adminDashboard;
+          } else if (user?.isClinician == true) {
+            route = AppRoutes.clinicianDashboard;
+          }
+
+          Navigator.pushReplacementNamed(context, route);
         }
-
-        Navigator.pushReplacementNamed(context, route);
       } else {
         ToastHelper.showError(
-          context, 
-          authProvider.errorMessage ?? 'Registration failed',
+          context,
+          result['message'] ?? 'Registration failed',
         );
       }
     }
@@ -113,6 +128,68 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 32),
+
+                // Role Selection
+                const Text(
+                  'I am a:',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    children: [
+                      RadioListTile<String>(
+                        title: const Row(
+                          children: [
+                            Icon(Icons.person, color: Colors.blue),
+                            SizedBox(width: 8),
+                            Text('Patient'),
+                          ],
+                        ),
+                        subtitle: const Text('Book appointments and manage health'),
+                        value: 'patient',
+                        groupValue: _selectedRole,
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedRole = value!;
+                          });
+                        },
+                      ),
+                      Divider(height: 1, color: Colors.grey.shade300),
+                      RadioListTile<String>(
+                        title: const Row(
+                          children: [
+                            Icon(Icons.medical_services, color: Colors.green),
+                            SizedBox(width: 8),
+                            Text('Clinician'),
+                          ],
+                        ),
+                        subtitle: const Text(
+                          'Requires admin verification',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                        value: 'clinician',
+                        groupValue: _selectedRole,
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedRole = value!;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
 
                 // Name Field
                 CustomTextField(
@@ -193,6 +270,33 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
+
+                // Information banner for clinicians
+                if (_selectedRole == 'clinician')
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.orange.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline, color: Colors.orange.shade700),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Your account will be reviewed by an admin before you can sign in.',
+                            style: TextStyle(
+                              color: Colors.orange.shade900,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (_selectedRole == 'clinician') const SizedBox(height: 16),
 
                 // Register button
                 Consumer<AuthProvider>(

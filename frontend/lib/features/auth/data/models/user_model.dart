@@ -6,6 +6,7 @@ class UserModel {
   final String role;
   final String? phone;
   final DateTime? createdAt;
+  final bool isVerified; // For clinician verification by admin
 
   UserModel({
     required this.id,
@@ -14,6 +15,7 @@ class UserModel {
     required this.role,
     this.phone,
     this.createdAt,
+    this.isVerified = true, // Default true for admin and patient
   });
 
   // Create Usermodel from json
@@ -25,6 +27,7 @@ class UserModel {
       role: json['role'] ?? 'patient',
       phone: json['phone'],
       createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
+      isVerified: json['isVerified'] ?? true,
     );
 }
 
@@ -37,6 +40,7 @@ Map<String, dynamic> toJson() {
       'role' : role,
       'phone' : phone,
       'createdAt' : createdAt?.toIso8601String(),
+      'isVerified': isVerified,
     };
   }
 
@@ -48,6 +52,7 @@ Map<String, dynamic> toJson() {
     String? role,
     String? phone,
     DateTime? createdAt,
+    bool? isVerified,
   }) {
     return UserModel(
       id: id ?? this.id, 
@@ -56,6 +61,7 @@ Map<String, dynamic> toJson() {
       role: role ?? this.role,
       phone: phone ?? this.phone,
       createdAt: createdAt ?? this.createdAt,
+      isVerified: isVerified ?? this.isVerified,
     );
   }
 
@@ -67,4 +73,7 @@ Map<String, dynamic> toJson() {
 
   // or patient
   bool get isPatient => role == 'patient';
+  
+  // Check if pending verification (for clinicians)
+  bool get isPending => isClinician && !isVerified;
 }

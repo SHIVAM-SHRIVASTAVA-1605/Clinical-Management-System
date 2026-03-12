@@ -5,6 +5,7 @@ import 'package:frontend/features/appointments/presentations/screens/appointment
 import 'package:frontend/features/appointments/presentations/screens/book_appointment_screen.dart';
 import 'package:frontend/features/auth/presentations/screens/login_screen.dart';
 import 'package:frontend/features/auth/presentations/screens/register_screen.dart';
+import 'package:frontend/features/auth/presentations/screens/user_verification_screen.dart';
 import 'package:frontend/features/clinicians/presentation/screens/clinician_details_screen.dart';
 import 'package:frontend/features/clinicians/presentation/screens/clinicians_list_screen.dart';
 import 'package:frontend/features/dashboard/presentation/screens/admin_dashboard_screen.dart';
@@ -27,6 +28,9 @@ class RouteManager {
       
       case AppRoutes.register:
         return MaterialPageRoute(builder: (_) => const RegisterScreen());
+
+      case AppRoutes.userVerification:
+        return MaterialPageRoute(builder: (_) => const UserVerificationScreen());
 
       // Dashboard routes
       case AppRoutes.adminDashboard:

@@ -3,7 +3,6 @@ import 'package:frontend/core/constants/app_colors.dart';
 import 'package:frontend/core/routes/app_routes.dart';
 import 'package:frontend/features/auth/presentations/providers/auth_provider.dart';
 import 'package:frontend/features/dashboard/presentation/widgets/app_drawer.dart';
-import 'package:frontend/features/dashboard/presentation/widgets/stats_card.dart';
 import 'package:provider/provider.dart';
 
 /// Patient dashboard screen
@@ -17,7 +16,7 @@ class PatientDashboardScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Dashboard'),
+        title: const Text('My Health Dashboard'),
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
@@ -41,146 +40,126 @@ class PatientDashboardScreen extends StatelessWidget {
             children: [
               // Welcome Message
               Text(
-                'Hello, ${user?.name ?? 'Patient'}!',
+                'Welcome, ${user?.name ?? 'Patient'}!',
                 style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Your health dashboard',
+              Text(
+                'Here\'s your health overview',
                 style: TextStyle(
                   fontSize: 16,
-                  color: AppColors.textSecondary,
+                  color: Colors.grey[600],
                 ),
               ),
               const SizedBox(height: 24),
 
-              // Stats Grid
-              GridView.count(
-                crossAxisCount: 2,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                childAspectRatio: 1.1,
-                children: [
-                  StatsCard(
-                    title: 'Upcoming Appointments',
-                    value: '2',
-                    icon: Icons.calendar_today,
-                    color: AppColors.warning,
-                    onTap: () {
-                      Navigator.pushNamed(context, AppRoutes.appointments);
-                    },
-                  ),
-                  StatsCard(
-                    title: 'Treatment Plans',
-                    value: '1',
-                    icon: Icons.description,
-                    color: AppColors.info,
-                    onTap: () {
-                      Navigator.pushNamed(context, AppRoutes.treatmentPlans);
-                    },
-                  ),
-                  StatsCard(
-                    title: 'My Clinicians',
-                    value: '2',
-                    icon: Icons.medical_services,
-                    color: AppColors.success,
-                    onTap: () {
-                      // TODO: Navigate to my clinicians
-                    },
-                  ),
-                  StatsCard(
-                    title: 'Medical Records',
-                    value: '5',
-                    icon: Icons.folder_outlined,
-                    color: AppColors.primary,
-                    onTap: () {
-                      // TODO: Navigate to medical records
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-
-              // Next Appointment Section
-              const Text(
-                'Next Appointment',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              _buildNextAppointmentCard(
-                context,
-                clinicianName: 'Dr. Emily Brown',
-                date: 'March 15, 2026',
-                time: '10:00 AM',
-                type: 'Follow-up Consultation',
-              ),
-              const SizedBox(height: 24),
-
-              // Active Treatment Plan
-              const Text(
-                'Active Treatment Plan',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              _buildTreatmentCard(
-                context,
-                title: 'Physiotherapy Program',
-                clinician: 'Dr. Emily Brown',
-                progress: 0.65,
-                daysRemaining: 10,
-              ),
-              const SizedBox(height: 24),
-
-              // Quick Actions
-              const Text(
-                'Quick Actions',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-
+              // Quick Stats
               Row(
                 children: [
                   Expanded(
-                    child: _buildActionButton(
+                    child: _buildStatCard(
                       context,
-                      icon: Icons.event_available,
-                      label: 'Book Appointment',
+                      title: 'Appointments',
+                      value: '3',
+                      label: 'Upcoming',
+                      icon: Icons.calendar_today,
                       color: AppColors.primary,
                       onTap: () {
-                        Navigator.pushNamed(context, AppRoutes.bookAppointment);
+                        Navigator.pushNamed(context, AppRoutes.appointments);
                       },
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: _buildActionButton(
+                    child: _buildStatCard(
                       context,
-                      icon: Icons.video_call,
-                      label: 'Telemedicine',
-                      color: AppColors.success,
+                      title: 'Treatment Plans',
+                      value: '2',
+                      label: 'Active',
+                      icon: Icons.medical_services,
+                      color: Colors.green,
                       onTap: () {
-                        // TODO: Navigate to telemedicine
+                        Navigator.pushNamed(context, AppRoutes.treatmentPlans);
                       },
                     ),
                   ),
                 ],
               ),
+              const SizedBox(height: 24),
+
+              // Upcoming Appointments Section
+              _buildSectionHeader(
+                context,
+                'Upcoming Appointments',
+                Icons.calendar_month,
+                onViewAll: () {
+                  Navigator.pushNamed(context, AppRoutes.appointments);
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildAppointmentCard(
+                context,
+                'Dr. Sarah Johnson',
+                'General Checkup',
+                DateTime.now().add(const Duration(days: 2)),
+                '10:00 AM',
+              ),
+              const SizedBox(height: 8),
+              _buildAppointmentCard(
+                context,
+                'Dr. Michael Chen',
+                'Follow-up Consultation',
+                DateTime.now().add(const Duration(days: 5)),
+                '02:30 PM',
+              ),
+              const SizedBox(height: 24),
+
+              // Health Vitals Section
+              _buildSectionHeader(
+                context,
+                'Health Vitals',
+                Icons.favorite,
+              ),
+              const SizedBox(height: 12),
+              _buildVitalsCard(context),
+              const SizedBox(height: 24),
+
+              // Active Treatment Plans
+              _buildSectionHeader(
+                context,
+                'Active Treatment Plans',
+                Icons.assignment,
+                onViewAll: () {
+                  Navigator.pushNamed(context, AppRoutes.treatmentPlans);
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildTreatmentPlanCard(
+                context,
+                'Hypertension Management',
+                'Dr. Sarah Johnson',
+                'Ongoing',
+              ),
+              const SizedBox(height: 8),
+              _buildTreatmentPlanCard(
+                context,
+                'Physical Therapy',
+                'Dr. Michael Chen',
+                'Week 3 of 8',
+              ),
+              const SizedBox(height: 24),
+
+              // Quick Actions
+              _buildSectionHeader(
+                context,
+                'Quick Actions',
+                Icons.flash_on,
+              ),
+              const SizedBox(height: 12),
+              _buildQuickActions(context),
             ],
           ),
         ),
@@ -191,133 +170,86 @@ class PatientDashboardScreen extends StatelessWidget {
         },
         icon: const Icon(Icons.add),
         label: const Text('Book Appointment'),
+        backgroundColor: AppColors.primary,
       ),
     );
   }
 
-  Widget _buildNextAppointmentCard(
-    BuildContext context, {
-    required String clinicianName,
-    required String date,
-    required String time,
-    required String type,
-  }) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              AppColors.primary.withOpacity(0.8),
-              AppColors.primary,
-            ],
-          ),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const CircleAvatar(
-                  backgroundColor: AppColors.white,
-                  child: Icon(
-                    Icons.person,
-                    color: AppColors.primary,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        clinicianName,
-                        style: const TextStyle(
-                          color: AppColors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        type,
-                        style: TextStyle(
-                          color: AppColors.white.withOpacity(0.9),
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.calendar_today,
-                      color: AppColors.white,
-                      size: 18,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      date,
-                      style: const TextStyle(
-                        color: AppColors.white,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.access_time,
-                      color: AppColors.white,
-                      size: 18,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      time,
-                      style: const TextStyle(
-                        color: AppColors.white,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTreatmentCard(
+  Widget _buildStatCard(
     BuildContext context, {
     required String title,
-    required String clinician,
-    required double progress,
-    required int daysRemaining,
+    required String value,
+    required String label,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
   }) {
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            gradient: LinearGradient(
+              colors: [
+                color.withOpacity(0.1),
+                color.withOpacity(0.05),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, color: color, size: 32),
+              const SizedBox(height: 12),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    );
+  }
+
+  Widget _buildSectionHeader(
+    BuildContext context,
+    String title,
+    IconData icon, {
+    VoidCallback? onViewAll,
+  }) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
           children: [
+            Icon(icon, color: AppColors.primary),
+            const SizedBox(width: 8),
             Text(
               title,
               style: const TextStyle(
@@ -325,75 +257,87 @@ class PatientDashboardScreen extends StatelessWidget {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Prescribed by $clinician',
-              style: const TextStyle(
-                fontSize: 14,
-                color: AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 16),
+          ],
+        ),
+        if (onViewAll != null)
+          TextButton(
+            onPressed: onViewAll,
+            child: const Text('View All'),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildAppointmentCard(
+    BuildContext context,
+    String doctorName,
+    String type,
+    DateTime date,
+    String time,
+  ) {
+    return Card(
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: AppColors.primary.withOpacity(0.1),
+          child: const Icon(Icons.person, color: AppColors.primary),
+        ),
+        title: Text(
+          doctorName,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(type),
+            const SizedBox(height: 4),
             Row(
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Progress',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      LinearProgressIndicator(
-                        value: progress,
-                        backgroundColor: AppColors.grey.withOpacity(0.3),
-                        valueColor: const AlwaysStoppedAnimation<Color>(
-                          AppColors.success,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${(progress * 100).toInt()}% Complete',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
+                Icon(Icons.calendar_today, size: 14, color: Colors.grey[600]),
+                const SizedBox(width: 4),
+                Text(
+                  '${date.day}/${date.month}/${date.year}',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                 ),
-                const SizedBox(width: 16),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.warning.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        '$daysRemaining',
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.warning,
-                        ),
-                      ),
-                      const Text(
-                        'days left',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.warning,
-                        ),
-                      ),
-                    ],
-                  ),
+                const SizedBox(width: 12),
+                Icon(Icons.access_time, size: 14, color: Colors.grey[600]),
+                const SizedBox(width: 4),
+                Text(
+                  time,
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                 ),
               ],
+            ),
+          ],
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () {
+          // TODO: Navigate to appointment details
+        },
+      ),
+    );
+  }
+
+  Widget _buildVitalsCard(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildVitalItem('Blood Pressure', '120/80', Icons.favorite, Colors.red),
+                _buildVitalItem('Heart Rate', '72 bpm', Icons.monitor_heart, Colors.pink),
+                _buildVitalItem('Weight', '70 kg', Icons.monitor_weight, Colors.blue),
+              ],
+            ),
+            const SizedBox(height: 16),
+            TextButton.icon(
+              onPressed: () {
+                // TODO: Navigate to full health records
+              },
+              icon: const Icon(Icons.assessment),
+              label: const Text('View Full Health Records'),
             ),
           ],
         ),
@@ -401,29 +345,134 @@ class PatientDashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildActionButton(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return ElevatedButton(
-      onPressed: onTap,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color,
-        foregroundColor: AppColors.white,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+  Widget _buildVitalItem(String label, String value, IconData icon, Color color) {
+    return Column(
+      children: [
+        Icon(icon, color: color, size: 32),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
         ),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey[600],
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTreatmentPlanCard(
+    BuildContext context,
+    String title,
+    String doctor,
+    String status,
+  ) {
+    return Card(
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: Colors.green.withOpacity(0.1),
+          child: const Icon(Icons.medical_services, color: Colors.green),
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('By $doctor'),
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                status,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: Colors.green,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () {
+          // TODO: Navigate to treatment plan details
+        },
       ),
-      child: Column(
-        children: [
-          Icon(icon, size: 32),
-          const SizedBox(height: 8),
-          Text(label),
-        ],
+    );
+  }
+
+  Widget _buildQuickActions(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _buildQuickActionButton(
+            context,
+            'Book Appointment',
+            Icons.calendar_today,
+            AppColors.primary,
+            () {
+              Navigator.pushNamed(context, AppRoutes.bookAppointment);
+            },
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _buildQuickActionButton(
+            context,
+            'My Records',
+            Icons.folder_outlined,
+            Colors.orange,
+            () {
+              // TODO: Navigate to medical records
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQuickActionButton(
+    BuildContext context,
+    String label,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+  ) {
+    return Card(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              Icon(icon, color: color, size: 32),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -118,7 +118,17 @@ class AppDrawer extends StatelessWidget {
                       Navigator.pushNamed(context, AppRoutes.analytics);
                     },
                   ),
-
+                // User Verification (Admin only)
+                if (user?.isAdmin == true)
+                  _buildDrawerItem(
+                    context,
+                    icon: Icons.verified_user,
+                    title: 'Verify Clinicians',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.userVerification);
+                    },
+                  ),
                 const Divider(),
 
                 // Profile
