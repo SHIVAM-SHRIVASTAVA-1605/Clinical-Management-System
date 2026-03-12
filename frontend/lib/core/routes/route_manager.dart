@@ -6,6 +6,8 @@ import 'package:frontend/features/clinicians/presentation/screens/clinicians_lis
 import 'package:frontend/features/dashboard/presentation/screens/admin_dashboard_screen.dart';
 import 'package:frontend/features/dashboard/presentation/screens/clinician_dashboard_screen.dart';
 import 'package:frontend/features/dashboard/presentation/screens/patient_dashboard_screen.dart';
+import 'package:frontend/features/patients/presentation/screens/patient_details_screen.dart';
+import 'package:frontend/features/patients/presentation/screens/patients_list_screen.dart';
 import 'app_routes.dart';
 
 /// Centralized route management
@@ -43,6 +45,18 @@ class RouteManager {
         );
       
       case AppRoutes.patients:
+        return MaterialPageRoute(builder: (_) => const PatientsListScreen());
+
+      case AppRoutes.patientDetails:
+        final patientId = settings.arguments as String?;
+        if (patientId == null) {
+          return MaterialPageRoute(builder: (_) => const _NotFoundScreen());
+        }
+        
+        return MaterialPageRoute(
+          builder: (_) => PatientDetailsScreen(patientId: patientId),
+        );
+        
       case AppRoutes.appointments:
       case AppRoutes.treatmentPlans:
       case AppRoutes.analytics:
