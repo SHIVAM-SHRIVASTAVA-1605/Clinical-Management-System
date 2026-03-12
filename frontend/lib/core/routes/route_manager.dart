@@ -11,6 +11,9 @@ import 'package:frontend/features/dashboard/presentation/screens/clinician_dashb
 import 'package:frontend/features/dashboard/presentation/screens/patient_dashboard_screen.dart';
 import 'package:frontend/features/patients/presentation/screens/patient_details_screen.dart';
 import 'package:frontend/features/patients/presentation/screens/patients_list_screen.dart';
+import 'package:frontend/features/treatment_plans/presentations/screens/create_treatment_plan_screen.dart';
+import 'package:frontend/features/treatment_plans/presentations/screens/treatment_plan_details_screen.dart';
+import 'package:frontend/features/treatment_plans/presentations/screens/treatment_plans_list_screen.dart';
 import 'app_routes.dart';
 
 /// Centralized route management
@@ -76,8 +79,24 @@ class RouteManager {
             builder: (_) => BookAppointmentScreen(),
           );
 
-      // TODO: Add more routes as features are built
       case AppRoutes.treatmentPlans:
+        return MaterialPageRoute(builder: (_) => const TreatmentPlansListScreen());
+      
+      case AppRoutes.treatmentPlanDetails:
+        final planId = settings.arguments as String?;
+        if (planId == null) {
+          return MaterialPageRoute(builder: (_) => const _NotFoundScreen());
+        }
+        return MaterialPageRoute(
+          builder: (_) => TreatmentPlanDetailsScreen(planId: planId),
+        );
+
+        case AppRoutes.createTreatmentPlan:
+          return MaterialPageRoute(
+            builder: (_) => const CreateTreatmentPlanScreen(),
+          );
+
+      // TODO: Add more routes as features are built
       case AppRoutes.analytics:
       case AppRoutes.profile:
       case AppRoutes.settings:

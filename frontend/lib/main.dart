@@ -7,6 +7,7 @@ import 'package:frontend/features/appointments/presentations/provider/appointmen
 import 'package:frontend/features/auth/presentations/providers/auth_provider.dart';
 import 'package:frontend/features/clinicians/presentation/providers/clinician_provider.dart';
 import 'package:frontend/features/patients/presentation/providers/patient_provider.dart';
+import 'package:frontend/features/treatment_plans/presentations/providers/treatment_plan_provider.dart';
 import 'package:provider/provider.dart';
 
 void main() {
@@ -24,6 +25,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ClinicianProvider()),
         ChangeNotifierProvider(create: (_) => PatientProvider()),
         ChangeNotifierProvider(create: (_) => AppointmentProvider()),
+        ChangeNotifierProvider(create: (_) => TreatmentPlanProvider()),
       ],
       child: MaterialApp(
         title: AppStrings.appName,

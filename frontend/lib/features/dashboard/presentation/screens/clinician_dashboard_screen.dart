@@ -195,7 +195,7 @@ class ClinicianDashboardScreen extends StatelessWidget {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
-          Navigator.pushNamed(context, AppRoutes.addTreatment);
+          Navigator.pushNamed(context, AppRoutes.createTreatmentPlan);
         },
         icon: const Icon(Icons.add),
         label: const Text('New Treatment Plan'),

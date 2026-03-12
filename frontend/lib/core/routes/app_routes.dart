@@ -26,8 +26,8 @@ class AppRoutes {
 
   // Treatment routes
   static const String treatmentPlans = '/treatment-plans';
-  static const String treatmentDetails = '/treatment-details';
-  static const String addTreatment = '/add-treatment';
+  static const String treatmentPlanDetails = '/treatment-plan-details';
+  static const String createTreatmentPlan = '/create-treatment-plan';
 
   // Analytics routes
   static const String analytics = '/analytics';
