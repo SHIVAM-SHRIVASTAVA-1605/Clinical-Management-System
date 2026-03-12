@@ -5,6 +5,7 @@ import 'package:frontend/core/widgets/empty_state_widget.dart';
 import 'package:frontend/core/widgets/loading_widget.dart';
 import 'package:frontend/features/treatment_plans/data/models/treatment_plan_model.dart';
 import 'package:frontend/features/treatment_plans/presentations/providers/treatment_plan_provider.dart';
+import 'package:frontend/features/auth/presentations/providers/auth_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:frontend/core/widgets/error_widget.dart' as custom;
 
@@ -45,27 +46,33 @@ class _TreatmentPlansListScreenState extends State<TreatmentPlansListScreen> {
           
           // Treatment Plans List
           Expanded(
-            child: Consumer<TreatmentPlanProvider>(
-              builder: (context, provider, child) {
-                if (provider.isLoading && provider.treatmentPlans.isEmpty) {
+            child: Consumer2<TreatmentPlanProvider, AuthProvider>(
+              builder: (context, treatmentPlanProvider, authProvider, child) {
+                if (treatmentPlanProvider.isLoading && treatmentPlanProvider.treatmentPlans.isEmpty) {
                   return const LoadingWidget(message: 'Loading treatment plans...');
                 }
 
-                if (provider.errorMessage != null) {
+                if (treatmentPlanProvider.errorMessage != null) {
                   return custom.CustomErrorWidget(
-                    message: provider.errorMessage!,
-                    onRetry: () => provider.fetchTreatmentPlans(),
+                    message: treatmentPlanProvider.errorMessage!,
+                    onRetry: () => treatmentPlanProvider.fetchTreatmentPlans(),
                   );
                 }
 
-                final treatmentPlans = provider.filteredTreatmentPlans;
+                // Filter treatment plans based on user role
+                final user = authProvider.user;
+                final allTreatmentPlans = treatmentPlanProvider.filteredTreatmentPlans;
+                final filteredTreatmentPlans = user?.isClinician == true
+                    ? allTreatmentPlans.where((plan) => 
+                        plan.clinicianId == user!.id).toList()
+                    : allTreatmentPlans;
 
-                if (treatmentPlans.isEmpty) {
+                if (filteredTreatmentPlans.isEmpty) {
                   return EmptyStateWidget(
                     icon: Icons.medical_services,
-                    message: provider.filterStatus == 'All'
+                    message: treatmentPlanProvider.filterStatus == 'All'
                         ? 'No treatment plans found'
-                        : 'No ${provider.filterStatus.toLowerCase()} treatment plans',
+                        : 'No ${treatmentPlanProvider.filterStatus.toLowerCase()} treatment plans',
                     actionLabel: 'Create Treatment Plan',
                     onAction: () {
                       Navigator.pushNamed(context, AppRoutes.createTreatmentPlan);
@@ -74,12 +81,12 @@ class _TreatmentPlansListScreenState extends State<TreatmentPlansListScreen> {
                 }
 
                 return RefreshIndicator(
-                  onRefresh: () => provider.fetchTreatmentPlans(),
+                  onRefresh: () => treatmentPlanProvider.fetchTreatmentPlans(),
                   child: ListView.builder(
                     padding: const EdgeInsets.all(16),
-                    itemCount: treatmentPlans.length,
+                    itemCount: filteredTreatmentPlans.length,
                     itemBuilder: (context, index) {
-                      final treatmentPlan = treatmentPlans[index];
+                      final treatmentPlan = filteredTreatmentPlans[index];
                       return _buildTreatmentPlanCard(context, treatmentPlan);
                     },
                   ),

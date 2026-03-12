@@ -5,6 +5,7 @@ import 'package:frontend/core/widgets/empty_state_widget.dart';
 import 'package:frontend/core/widgets/loading_widget.dart';
 import 'package:frontend/features/appointments/data/models/appointment_model.dart';
 import 'package:frontend/features/appointments/presentations/provider/appointment_provider.dart';
+import 'package:frontend/features/auth/presentations/providers/auth_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:frontend/core/widgets/error_widget.dart' as custom;
 
@@ -45,27 +46,33 @@ class _AppointmentsListScreenState extends State<AppointmentsListScreen> {
           
           // Appointments List
           Expanded(
-            child: Consumer<AppointmentProvider>(
-              builder: (context, provider, child) {
-                if (provider.isLoading && provider.appointments.isEmpty) {
+            child: Consumer2<AppointmentProvider, AuthProvider>(
+              builder: (context, appointmentProvider, authProvider, child) {
+                if (appointmentProvider.isLoading && appointmentProvider.appointments.isEmpty) {
                   return const LoadingWidget(message: 'Loading appointments...');
                 }
 
-                if (provider.errorMessage != null) {
+                if (appointmentProvider.errorMessage != null) {
                   return custom.CustomErrorWidget(
-                    message: provider.errorMessage!,
-                    onRetry: () => provider.fetchAppointments(),
+                    message: appointmentProvider.errorMessage!,
+                    onRetry: () => appointmentProvider.fetchAppointments(),
                   );
                 }
 
-                final appointments = provider.filteredAppointments;
+                // Filter appointments based on user role
+                final user = authProvider.user;
+                final allAppointments = appointmentProvider.filteredAppointments;
+                final filteredAppointments = user?.isClinician == true
+                    ? allAppointments.where((appointment) => 
+                        appointment.clinicianId == user!.id).toList()
+                    : allAppointments;
 
-                if (appointments.isEmpty) {
+                if (filteredAppointments.isEmpty) {
                   return EmptyStateWidget(
                     icon: Icons.calendar_today,
-                    message: provider.filterStatus == 'All'
+                    message: appointmentProvider.filterStatus == 'All'
                         ? 'No appointments found'
-                        : 'No ${provider.filterStatus.toLowerCase()} appointments',
+                        : 'No ${appointmentProvider.filterStatus.toLowerCase()} appointments',
                     actionLabel: 'Book Appointment',
                     onAction: () {
                       Navigator.pushNamed(context, AppRoutes.bookAppointment);
@@ -74,12 +81,12 @@ class _AppointmentsListScreenState extends State<AppointmentsListScreen> {
                 }
 
                 return RefreshIndicator(
-                  onRefresh: () => provider.fetchAppointments(),
+                  onRefresh: () => appointmentProvider.fetchAppointments(),
                   child: ListView.builder(
                     padding: const EdgeInsets.all(16),
-                    itemCount: appointments.length,
+                    itemCount: filteredAppointments.length,
                     itemBuilder: (context, index) {
-                      final appointment = appointments[index];
+                      final appointment = filteredAppointments[index];
                       return _buildAppointmentCard(context, appointment);
                     },
                   ),

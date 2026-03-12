@@ -106,30 +106,104 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
         }
 
         final patients = provider.patients;
+        final selectedPatient = _selectedPatientId != null
+            ? patients.firstWhere((p) => p.id == _selectedPatientId,
+                orElse: () => patients.first)
+            : null;
 
-        return DropdownButtonFormField<String>(
-          decoration: const InputDecoration(
-            labelText: 'Select Patient',
-            prefixIcon: Icon(Icons.person),
-            border: OutlineInputBorder(),
+        return InkWell(
+          onTap: () => _showPatientSearchDialog(context, patients),
+          child: InputDecorator(
+            decoration: InputDecoration(
+              labelText: 'Select Patient',
+              prefixIcon: const Icon(Icons.person),
+              border: const OutlineInputBorder(),
+              errorText: _selectedPatientId == null ? null : null,
+              suffixIcon: const Icon(Icons.search),
+            ),
+            child: Text(
+              selectedPatient != null
+                  ? '${selectedPatient.fullName} (ID: ${selectedPatient.id.length > 8 ? selectedPatient.id.substring(0, 8) : selectedPatient.id})'
+                  : 'Tap to search and select patient',
+              style: TextStyle(
+                fontSize: 16,
+                color: selectedPatient != null ? Colors.black : Colors.grey,
+              ),
+            ),
           ),
-          value: _selectedPatientId,
-          items: patients.map((patient) {
-            return DropdownMenuItem(
-              value: patient.id,
-              child: Text(patient.fullName),
+        );
+      },
+    );
+  }
+
+  Future<void> _showPatientSearchDialog(BuildContext context, List patients) async {
+    final TextEditingController searchController = TextEditingController();
+    List filteredPatients = patients;
+
+    await showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Select Patient'),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: searchController,
+                      decoration: const InputDecoration(
+                        labelText: 'Search by name or ID',
+                        prefixIcon: Icon(Icons.search),
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: (value) {
+                        setState(() {
+                          filteredPatients = patients.where((patient) {
+                            final searchLower = value.toLowerCase();
+                            return patient.fullName.toLowerCase().contains(searchLower) ||
+                                   patient.id.toLowerCase().contains(searchLower);
+                          }).toList();
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    Expanded(
+                      child: filteredPatients.isEmpty
+                          ? const Center(child: Text('No patients found'))
+                          : ListView.builder(
+                              shrinkWrap: true,
+                              itemCount: filteredPatients.length,
+                              itemBuilder: (context, index) {
+                                final patient = filteredPatients[index];
+                                return ListTile(
+                                  leading: CircleAvatar(
+                                    child: Text(patient.name.firstName[0]),
+                                  ),
+                                  title: Text(patient.fullName),
+                                  subtitle: Text('ID: ${patient.id}'),
+                                  onTap: () {
+                                    this.setState(() {
+                                      _selectedPatientId = patient.id;
+                                    });
+                                    Navigator.pop(dialogContext);
+                                  },
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Cancel'),
+                ),
+              ],
             );
-          }).toList(),
-          onChanged: (value) {
-            setState(() {
-              _selectedPatientId = value;
-            });
-          },
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Please select a patient';
-            }
-            return null;
           },
         );
       },
@@ -144,30 +218,106 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
         }
 
         final clinicians = provider.clinicians;
+        final selectedClinician = _selectedClinicianId != null
+            ? clinicians.firstWhere((c) => c.id == _selectedClinicianId,
+                orElse: () => clinicians.first)
+            : null;
 
-        return DropdownButtonFormField<String>(
-          decoration: const InputDecoration(
-            labelText: 'Select Healthcare Provider',
-            prefixIcon: Icon(Icons.medical_services),
-            border: OutlineInputBorder(),
+        return InkWell(
+          onTap: () => _showClinicianSearchDialog(context, clinicians),
+          child: InputDecorator(
+            decoration: InputDecoration(
+              labelText: 'Select Healthcare Provider',
+              prefixIcon: const Icon(Icons.medical_services),
+              border: const OutlineInputBorder(),
+              errorText: _selectedClinicianId == null ? null : null,
+              suffixIcon: const Icon(Icons.search),
+            ),
+            child: Text(
+              selectedClinician != null
+                  ? '${selectedClinician.name.title} ${selectedClinician.name.firstName} ${selectedClinician.name.lastName} (ID: ${selectedClinician.id.length > 8 ? selectedClinician.id.substring(0, 8) : selectedClinician.id})'
+                  : 'Tap to search and select healthcare provider',
+              style: TextStyle(
+                fontSize: 16,
+                color: selectedClinician != null ? Colors.black : Colors.grey,
+              ),
+            ),
           ),
-          value: _selectedClinicianId,
-          items: clinicians.map((clinician) {
-            return DropdownMenuItem(
-              value: clinician.id,
-              child: Text('${clinician.name.title} ${clinician.name.firstName} ${clinician.name.lastName}'),
+        );
+      },
+    );
+  }
+
+  Future<void> _showClinicianSearchDialog(BuildContext context, List clinicians) async {
+    final TextEditingController searchController = TextEditingController();
+    List filteredClinicians = clinicians;
+
+    await showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Select Healthcare Provider'),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: searchController,
+                      decoration: const InputDecoration(
+                        labelText: 'Search by name or ID',
+                        prefixIcon: Icon(Icons.search),
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: (value) {
+                        setState(() {
+                          filteredClinicians = clinicians.where((clinician) {
+                            final searchLower = value.toLowerCase();
+                            final fullName = '${clinician.name.title} ${clinician.name.firstName} ${clinician.name.lastName}'.toLowerCase();
+                            return fullName.contains(searchLower) ||
+                                   clinician.id.toLowerCase().contains(searchLower);
+                          }).toList();
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    Expanded(
+                      child: filteredClinicians.isEmpty
+                          ? const Center(child: Text('No healthcare providers found'))
+                          : ListView.builder(
+                              shrinkWrap: true,
+                              itemCount: filteredClinicians.length,
+                              itemBuilder: (context, index) {
+                                final clinician = filteredClinicians[index];
+                                return ListTile(
+                                  leading: CircleAvatar(
+                                    child: Text(clinician.name.firstName[0]),
+                                  ),
+                                  title: Text('${clinician.name.title} ${clinician.name.firstName} ${clinician.name.lastName}'),
+                                  subtitle: Text('ID: ${clinician.id}\n${clinician.credentials.specialty}'),
+                                  isThreeLine: true,
+                                  onTap: () {
+                                    this.setState(() {
+                                      _selectedClinicianId = clinician.id;
+                                    });
+                                    Navigator.pop(dialogContext);
+                                  },
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Cancel'),
+                ),
+              ],
             );
-          }).toList(),
-          onChanged: (value) {
-            setState(() {
-              _selectedClinicianId = value;
-            });
-          },
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Please select a healthcare provider';
-            }
-            return null;
           },
         );
       },
@@ -377,6 +527,27 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     // Get patient and clinician names
     final patientProvider = context.read<PatientProvider>();
     final clinicianProvider = context.read<ClinicianProvider>();
+    
+    // Validate patient and clinician selection
+    if (_selectedPatientId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a patient'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    if (_selectedClinicianId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a healthcare provider'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
     
     final patient = patientProvider.patients.firstWhere(
       (p) => p.id == _selectedPatientId,

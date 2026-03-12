@@ -2,36 +2,92 @@ import 'package:flutter/material.dart';
 import 'package:frontend/core/constants/app_colors.dart';
 import 'package:frontend/core/routes/app_routes.dart';
 import 'package:frontend/features/auth/presentations/providers/auth_provider.dart';
+import 'package:frontend/features/patients/presentation/providers/patient_provider.dart';
+import 'package:frontend/features/appointments/presentations/provider/appointment_provider.dart';
+import 'package:frontend/features/treatment_plans/presentations/providers/treatment_plan_provider.dart';
 import 'package:frontend/features/dashboard/presentation/widgets/app_drawer.dart';
 import 'package:frontend/features/dashboard/presentation/widgets/stats_card.dart';
 import 'package:provider/provider.dart';
 
 /// Clinician dashboard screen
-class ClinicianDashboardScreen extends StatelessWidget {
+class ClinicianDashboardScreen extends StatefulWidget {
   const ClinicianDashboardScreen({super.key});
+
+  @override
+  State<ClinicianDashboardScreen> createState() => _ClinicianDashboardScreenState();
+}
+
+class _ClinicianDashboardScreenState extends State<ClinicianDashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Load data when screen initializes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadData();
+    });
+  }
+
+  void _loadData() {
+    final user = context.read<AuthProvider>().user;
+    if (user != null) {
+      // Load patients assigned to this clinician
+      context.read<PatientProvider>().fetchPatients();
+      // Load appointments for this clinician
+      context.read<AppointmentProvider>().fetchAppointments();
+      // Load treatment plans for this clinician
+      context.read<TreatmentPlanProvider>().fetchTreatmentPlans();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
+    final patientProvider = context.watch<PatientProvider>();
+    final appointmentProvider = context.watch<AppointmentProvider>();
+    final treatmentPlanProvider = context.watch<TreatmentPlanProvider>();
     final user = authProvider.user;
+
+    // Filter data by clinician ID
+    final clinicianId = user?.id ?? '';
+    
+    // Get today's date for filtering
+    final today = DateTime.now();
+    
+    // Filter appointments for this clinician and today
+    final allAppointments = appointmentProvider.appointments
+        .where((apt) => apt.clinicianId == clinicianId)
+        .toList();
+    
+    final todayAppointments = allAppointments.where((apt) {
+      return apt.scheduledAt.year == today.year &&
+             apt.scheduledAt.month == today.month &&
+             apt.scheduledAt.day == today.day;
+    }).toList();
+
+    // Filter patients assigned to this clinician
+    final myPatients = patientProvider.patients
+        .where((patient) => patient.assignedClinicianIds.contains(clinicianId))
+        .toList();
+
+    // Filter treatment plans created by this clinician
+    final myTreatmentPlans = treatmentPlanProvider.treatmentPlans
+        .where((plan) => plan.clinicianId == clinicianId)
+        .toList();
+
+    final activeTreatments = myTreatmentPlans
+        .where((plan) => plan.status.toString().contains('active'))
+        .length;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Clinician Dashboard'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () {
-              // TODO: Navigate to notifications
-            },
-          ),
-        ],
       ),
       drawer: const AppDrawer(),
       body: RefreshIndicator(
         onRefresh: () async {
-          // TODO: Refresh dashboard data
-          await Future.delayed(const Duration(seconds: 1));
+          // Refresh all data
+          _loadData();
+          await Future.delayed(const Duration(milliseconds: 500));
         },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -68,7 +124,7 @@ class ClinicianDashboardScreen extends StatelessWidget {
                 children: [
                   StatsCard(
                     title: 'My Patients',
-                    value: '15',
+                    value: myPatients.length.toString(),
                     icon: Icons.people,
                     color: AppColors.success,
                     onTap: () {
@@ -77,7 +133,7 @@ class ClinicianDashboardScreen extends StatelessWidget {
                   ),
                   StatsCard(
                     title: 'Today\'s Appointments',
-                    value: '6',
+                    value: todayAppointments.length.toString(),
                     icon: Icons.calendar_today,
                     color: AppColors.warning,
                     onTap: () {
@@ -86,7 +142,7 @@ class ClinicianDashboardScreen extends StatelessWidget {
                   ),
                   StatsCard(
                     title: 'Active Treatments',
-                    value: '12',
+                    value: activeTreatments.toString(),
                     icon: Icons.description,
                     color: AppColors.info,
                     onTap: () {
@@ -94,12 +150,12 @@ class ClinicianDashboardScreen extends StatelessWidget {
                     },
                   ),
                   StatsCard(
-                    title: 'Pending Reviews',
-                    value: '3',
-                    icon: Icons.rate_review,
+                    title: 'Total Appointments',
+                    value: allAppointments.length.toString(),
+                    icon: Icons.event_note,
                     color: AppColors.primary,
                     onTap: () {
-                      // TODO: Navigate to pending reviews
+                      Navigator.pushNamed(context, AppRoutes.appointments);
                     },
                   ),
                 ],
@@ -116,30 +172,44 @@ class ClinicianDashboardScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
 
-              // Appointment List Preview
-              _buildAppointmentCard(
-                context,
-                patientName: 'John Smith',
-                time: '09:00 AM',
-                type: 'Consultation',
-                status: 'Upcoming',
-              ),
-              const SizedBox(height: 12),
-              _buildAppointmentCard(
-                context,
-                patientName: 'Sarah Johnson',
-                time: '11:00 AM',
-                type: 'Follow-up',
-                status: 'Upcoming',
-              ),
-              const SizedBox(height: 12),
-              _buildAppointmentCard(
-                context,
-                patientName: 'Mike Wilson',
-                time: '02:00 PM',
-                type: 'Treatment',
-                status: 'Scheduled',
-              ),
+              // Show real appointments or empty state
+              if (todayAppointments.isEmpty)
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32.0),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.event_available,
+                          size: 64,
+                          color: Colors.grey.shade400,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No appointments scheduled for today',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                ...todayAppointments.take(3).map((appointment) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _buildAppointmentCard(
+                      context,
+                      appointmentId: appointment.id,
+                      patientName: appointment.patientName ?? 'Patient ID: ${appointment.patientId}',
+                      time: '${appointment.scheduledAt.hour.toString().padLeft(2, '0')}:${appointment.scheduledAt.minute.toString().padLeft(2, '0')}',
+                      type: appointment.appointmentType,
+                      status: appointment.status,
+                    ),
+                  );
+                }).toList(),
               const SizedBox(height: 16),
 
               // View All Button
@@ -164,30 +234,16 @@ class ClinicianDashboardScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
 
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildActionButton(
-                      context,
-                      icon: Icons.add_circle_outline,
-                      label: 'New Patient',
-                      onTap: () {
-                        Navigator.pushNamed(context, AppRoutes.addPatient);
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildActionButton(
-                      context,
-                      icon: Icons.event_available,
-                      label: 'Book Appointment',
-                      onTap: () {
-                        Navigator.pushNamed(context, AppRoutes.bookAppointment);
-                      },
-                    ),
-                  ),
-                ],
+              SizedBox(
+                width: double.infinity,
+                child: _buildActionButton(
+                  context,
+                  icon: Icons.event_available,
+                  label: 'Book Appointment',
+                  onTap: () {
+                    Navigator.pushNamed(context, AppRoutes.bookAppointment);
+                  },
+                ),
               ),
             ],
           ),
@@ -205,6 +261,7 @@ class ClinicianDashboardScreen extends StatelessWidget {
 
   Widget _buildAppointmentCard(
     BuildContext context, {
+    required String appointmentId,
     required String patientName,
     required String time,
     required String type,
@@ -247,7 +304,11 @@ class ClinicianDashboardScreen extends StatelessWidget {
           ),
         ),
         onTap: () {
-          Navigator.pushNamed(context, AppRoutes.appointmentDetails);
+          Navigator.pushNamed(
+            context,
+            AppRoutes.appointmentDetails,
+            arguments: appointmentId,
+          );
         },
       ),
     );

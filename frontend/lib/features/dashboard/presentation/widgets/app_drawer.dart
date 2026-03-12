@@ -61,8 +61,8 @@ class AppDrawer extends StatelessWidget {
 
                 const Divider(),
 
-                // Clinicians (Admin & Clinician only)
-                if (user?.isAdmin == true || user?.isClinician == true)
+                // Clinicians (Admin only)
+                if (user?.isAdmin == true)
                   _buildDrawerItem(
                     context,
                     icon: Icons.medical_services,

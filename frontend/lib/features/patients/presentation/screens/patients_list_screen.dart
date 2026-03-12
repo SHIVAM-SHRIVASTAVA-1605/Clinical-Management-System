@@ -5,6 +5,7 @@ import '../../../../core/routes/app_routes.dart';
 import '../../../../core/widgets/loading_widget.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/error_widget.dart' as custom;
+import '../../../auth/presentations/providers/auth_provider.dart';
 import '../providers/patient_provider.dart';
 import '../../data/models/patient_model.dart';
 
@@ -81,20 +82,28 @@ class _PatientsListScreenState extends State<PatientsListScreen> {
 
           // Patients List
           Expanded(
-            child: Consumer<PatientProvider>(
-              builder: (context, provider, child) {
-                if (provider.isLoading && provider.patients.isEmpty) {
+            child: Consumer2<PatientProvider, AuthProvider>(
+              builder: (context, patientProvider, authProvider, child) {
+                if (patientProvider.isLoading && patientProvider.patients.isEmpty) {
                   return const LoadingWidget(message: 'Loading patients...');
                 }
 
-                if (provider.errorMessage != null) {
+                if (patientProvider.errorMessage != null) {
                   return custom.CustomErrorWidget(
-                    message: provider.errorMessage!,
-                    onRetry: () => provider.fetchPatients(),
+                    message: patientProvider.errorMessage!,
+                    onRetry: () => patientProvider.fetchPatients(),
                   );
                 }
 
-                if (provider.patients.isEmpty) {
+                // Filter patients based on user role
+                final user = authProvider.user;
+                final allPatients = patientProvider.patients;
+                final filteredPatients = user?.isClinician == true
+                    ? allPatients.where((patient) => 
+                        patient.assignedClinicianIds.contains(user!.id)).toList()
+                    : allPatients;
+
+                if (filteredPatients.isEmpty) {
                   return EmptyStateWidget(
                     icon: Icons.person_outline,
                     message: _searchController.text.isEmpty
@@ -108,12 +117,12 @@ class _PatientsListScreenState extends State<PatientsListScreen> {
                 }
 
                 return RefreshIndicator(
-                  onRefresh: () => provider.fetchPatients(),
+                  onRefresh: () => patientProvider.fetchPatients(),
                   child: ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: provider.patients.length,
+                    itemCount: filteredPatients.length,
                     itemBuilder: (context, index) {
-                      final patient = provider.patients[index];
+                      final patient = filteredPatients[index];
                       return _buildPatientCard(context, patient);
                     },
                   ),
