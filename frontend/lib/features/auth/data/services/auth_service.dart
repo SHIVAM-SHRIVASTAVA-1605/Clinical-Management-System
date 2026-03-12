@@ -61,7 +61,7 @@ class AuthService {
     required String email,
     required String password,
     String? phone,
-    String role = 'patient',
+    String role = 'admin',
   }) async {
     try {
       // TODO: Replace with actual api call when backend is ready

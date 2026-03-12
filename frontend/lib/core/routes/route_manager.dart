@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/features/analytics/presentation/screens/analytics_dashboard_screen.dart';
 import 'package:frontend/features/appointments/presentations/screens/appointment_details_screen.dart';
 import 'package:frontend/features/appointments/presentations/screens/appointments_list_screen.dart';
 import 'package:frontend/features/appointments/presentations/screens/book_appointment_screen.dart';
@@ -96,8 +97,12 @@ class RouteManager {
             builder: (_) => const CreateTreatmentPlanScreen(),
           );
 
-      // TODO: Add more routes as features are built
       case AppRoutes.analytics:
+        return MaterialPageRoute(
+          builder: (_) => const AnalyticsDashboardScreen(),
+        );
+
+      // TODO: Add more routes as features are built
       case AppRoutes.profile:
       case AppRoutes.settings:
         return MaterialPageRoute(
