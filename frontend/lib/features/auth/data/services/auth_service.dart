@@ -6,8 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 // Authentication Service for API calls.
 // TODO: Replace mock flows with backend endpoints when deployed.
 class AuthService {
-  static const String _resettableEmail = 'shivam@gmail.com';
-
   static final AuthService _instance = AuthService._internal();
   factory AuthService() => _instance;
 
@@ -74,15 +72,6 @@ class AuthService {
     try {
       await Future.delayed(const Duration(seconds: 1));
       final normalizedEmail = email.trim().toLowerCase();
-
-      if (normalizedEmail == _resettableEmail) {
-        final prefs = await SharedPreferences.getInstance();
-        final deletedAny = _deleteUsersByEmail(normalizedEmail);
-        if (deletedAny) {
-          await _clearSavedAuthForEmail(prefs, normalizedEmail);
-          await _persistUsers();
-        }
-      }
 
       final existingUser = _mockUsers.where(
         (u) => u.email.toLowerCase() == normalizedEmail,
@@ -199,36 +188,6 @@ class AuthService {
     } catch (_) {
       // Keep defaults if cached data is corrupted.
       await _persistUsers();
-    }
-  }
-
-  bool _deleteUsersByEmail(String normalizedEmail) {
-    final before = _mockUsers.length;
-    _mockUsers.removeWhere(
-      (u) => u.email.trim().toLowerCase() == normalizedEmail,
-    );
-    return before != _mockUsers.length;
-  }
-
-  Future<void> _clearSavedAuthForEmail(
-    SharedPreferences prefs,
-    String normalizedEmail,
-  ) async {
-    final rawUser = prefs.getString(_userKey);
-    if (rawUser == null || rawUser.isEmpty) {
-      return;
-    }
-
-    try {
-      final json = jsonDecode(rawUser);
-      if (json is Map) {
-        final email = (json['email'] ?? '').toString().trim().toLowerCase();
-        if (email == normalizedEmail) {
-          await _clearAuthData();
-        }
-      }
-    } catch (_) {
-      await _clearAuthData();
     }
   }
 }
