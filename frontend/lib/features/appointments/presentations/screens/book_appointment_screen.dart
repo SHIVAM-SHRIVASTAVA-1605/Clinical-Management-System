@@ -3,7 +3,6 @@ import 'package:frontend/core/constants/app_colors.dart';
 import 'package:frontend/features/appointments/data/models/appointment_model.dart';
 import 'package:frontend/features/appointments/presentations/provider/appointment_provider.dart';
 import 'package:frontend/features/clinicians/presentation/providers/clinician_provider.dart';
-import 'package:frontend/features/patients/presentation/providers/patient_provider.dart';
 import 'package:provider/provider.dart';
 
 // Book appointment screen
@@ -31,9 +30,8 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
   @override
   void initState() {
     super.initState();
-    // Fetch patients and clinicians
+    // Fetch clinicians
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<PatientProvider>().fetchPatients();
       context.read<ClinicianProvider>().fetchClinicians();
     });
   }
@@ -51,7 +49,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
           children: [
             _buildSectionTitle('Participants'),
             const SizedBox(height: 12),
-            _buildPatientDropdown(),
+            _buildPatientIdField(),
             const SizedBox(height: 16),
             _buildClinicianDropdown(),
             
@@ -98,114 +96,23 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     );
   }
 
-  Widget _buildPatientDropdown() {
-    return Consumer<PatientProvider>(
-      builder: (context, provider, child) {
-        if (provider.isLoading) {
-          return const LinearProgressIndicator();
-        }
-
-        final patients = provider.patients;
-        final selectedPatient = _selectedPatientId != null
-            ? patients.firstWhere((p) => p.id == _selectedPatientId,
-                orElse: () => patients.first)
-            : null;
-
-        return InkWell(
-          onTap: () => _showPatientSearchDialog(context, patients),
-          child: InputDecorator(
-            decoration: InputDecoration(
-              labelText: 'Select Patient',
-              prefixIcon: const Icon(Icons.person),
-              border: const OutlineInputBorder(),
-              errorText: _selectedPatientId == null ? null : null,
-              suffixIcon: const Icon(Icons.search),
-            ),
-            child: Text(
-              selectedPatient != null
-                  ? '${selectedPatient.fullName} (ID: ${selectedPatient.id.length > 8 ? selectedPatient.id.substring(0, 8) : selectedPatient.id})'
-                  : 'Tap to search and select patient',
-              style: TextStyle(
-                fontSize: 16,
-                color: selectedPatient != null ? Colors.black : Colors.grey,
-              ),
-            ),
-          ),
-        );
+  Widget _buildPatientIdField() {
+    return TextFormField(
+      decoration: const InputDecoration(
+        labelText: 'Patient ID',
+        hintText: 'Enter patient ID',
+        prefixIcon: Icon(Icons.person),
+        border: OutlineInputBorder(),
+      ),
+      initialValue: _selectedPatientId,
+      onChanged: (value) {
+        _selectedPatientId = value.trim();
       },
-    );
-  }
-
-  Future<void> _showPatientSearchDialog(BuildContext context, List patients) async {
-    final TextEditingController searchController = TextEditingController();
-    List filteredPatients = patients;
-
-    await showDialog(
-      context: context,
-      builder: (BuildContext dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: const Text('Select Patient'),
-              content: SizedBox(
-                width: double.maxFinite,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: searchController,
-                      decoration: const InputDecoration(
-                        labelText: 'Search by name or ID',
-                        prefixIcon: Icon(Icons.search),
-                        border: OutlineInputBorder(),
-                      ),
-                      onChanged: (value) {
-                        setState(() {
-                          filteredPatients = patients.where((patient) {
-                            final searchLower = value.toLowerCase();
-                            return patient.fullName.toLowerCase().contains(searchLower) ||
-                                   patient.id.toLowerCase().contains(searchLower);
-                          }).toList();
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    Expanded(
-                      child: filteredPatients.isEmpty
-                          ? const Center(child: Text('No patients found'))
-                          : ListView.builder(
-                              shrinkWrap: true,
-                              itemCount: filteredPatients.length,
-                              itemBuilder: (context, index) {
-                                final patient = filteredPatients[index];
-                                return ListTile(
-                                  leading: CircleAvatar(
-                                    child: Text(patient.name.firstName[0]),
-                                  ),
-                                  title: Text(patient.fullName),
-                                  subtitle: Text('ID: ${patient.id}'),
-                                  onTap: () {
-                                    this.setState(() {
-                                      _selectedPatientId = patient.id;
-                                    });
-                                    Navigator.pop(dialogContext);
-                                  },
-                                );
-                              },
-                            ),
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('Cancel'),
-                ),
-              ],
-            );
-          },
-        );
+      validator: (value) {
+        if (value == null || value.trim().isEmpty) {
+          return 'Please enter patient ID';
+        }
+        return null;
       },
     );
   }
@@ -524,8 +431,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
       return;
     }
 
-    // Get patient and clinician names
-    final patientProvider = context.read<PatientProvider>();
+    // Get clinician name
     final clinicianProvider = context.read<ClinicianProvider>();
     
     // Validate patient and clinician selection
@@ -549,9 +455,6 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
       return;
     }
     
-    final patient = patientProvider.patients.firstWhere(
-      (p) => p.id == _selectedPatientId,
-    );
     final clinician = clinicianProvider.clinicians.firstWhere(
       (c) => c.id == _selectedClinicianId,
     );
@@ -579,16 +482,11 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
       billing: BillingInfo(
         amount: _amount,
         status: 'Pending',
-        insuranceDetails: patient.insurance != null
-            ? InsuranceDetails(
-                provider: patient.insurance!.provider,
-                policyNumber: patient.insurance!.policyNumber,
-              )
-            : null,
+        insuranceDetails: null,
       ),
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
-      patientName: patient.fullName,
+      patientName: 'Patient ID: $_selectedPatientId',
       clinicianName: '${clinician.name.title} ${clinician.name.firstName} ${clinician.name.lastName}',
     );
 

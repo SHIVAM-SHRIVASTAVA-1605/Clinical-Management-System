@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/core/constants/app_colors.dart';
+import 'package:frontend/features/appointments/presentations/provider/appointment_provider.dart';
 import 'package:frontend/features/clinicians/presentation/providers/clinician_provider.dart';
-import 'package:frontend/features/patients/presentation/providers/patient_provider.dart';
 import 'package:frontend/features/treatment_plans/data/models/treatment_plan_model.dart';
 import 'package:frontend/features/treatment_plans/presentations/providers/treatment_plan_provider.dart';
 import 'package:provider/provider.dart';
@@ -33,9 +33,9 @@ class _CreateTreatmentPlanScreenState extends State<CreateTreatmentPlanScreen> {
   @override
   void initState() {
     super.initState();
-    // Fetch patients and clinicians
+    // Fetch appointments and clinicians
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<PatientProvider>().fetchPatients();
+      context.read<AppointmentProvider>().fetchAppointments();
       context.read<ClinicianProvider>().fetchClinicians();
     });
   }
@@ -108,25 +108,30 @@ class _CreateTreatmentPlanScreenState extends State<CreateTreatmentPlanScreen> {
   }
 
   Widget _buildPatientDropdown() {
-    return Consumer<PatientProvider>(
+    return Consumer<AppointmentProvider>(
       builder: (context, provider, child) {
         if (provider.isLoading) {
           return const LinearProgressIndicator();
         }
 
-        final patients = provider.patients;
+        final patientIds = provider.appointments
+            .map((appointment) => appointment.patientId)
+            .where((id) => id.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
 
         return DropdownButtonFormField<String>(
           decoration: const InputDecoration(
-            labelText: 'Select Patient',
+            labelText: 'Select Patient ID',
             prefixIcon: Icon(Icons.person),
             border: OutlineInputBorder(),
           ),
           value: _selectedPatientId,
-          items: patients.map((patient) {
+          items: patientIds.map((patientId) {
             return DropdownMenuItem(
-              value: patient.id,
-              child: Text(patient.fullName),
+              value: patientId,
+              child: Text(patientId),
             );
           }).toList(),
           onChanged: (value) {
@@ -136,7 +141,7 @@ class _CreateTreatmentPlanScreenState extends State<CreateTreatmentPlanScreen> {
           },
           validator: (value) {
             if (value == null || value.isEmpty) {
-              return 'Please select a patient';
+              return 'Please select a patient ID';
             }
             return null;
           },
@@ -636,11 +641,8 @@ class _CreateTreatmentPlanScreenState extends State<CreateTreatmentPlanScreen> {
       return;
     }
 
-    // Get patient and clinician names
-    final patientProvider = context.read<PatientProvider>();
+    // Get clinician name
     final clinicianProvider = context.read<ClinicianProvider>();
-    
-    final patient = patientProvider.patients.firstWhere((p) => p.id == _selectedPatientId);
     final clinician = clinicianProvider.clinicians.firstWhere((c) => c.id == _selectedClinicianId);
 
     // Create treatment plan
@@ -657,7 +659,7 @@ class _CreateTreatmentPlanScreenState extends State<CreateTreatmentPlanScreen> {
       notes: _notes.isEmpty ? null : _notes,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
-      patientName: patient.fullName,
+      patientName: 'Patient ID: $_selectedPatientId',
       clinicianName: '${clinician.name.title} ${clinician.name.firstName} ${clinician.name.lastName}',
     );
 

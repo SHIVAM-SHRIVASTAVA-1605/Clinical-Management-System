@@ -46,7 +46,7 @@ class _LoginScreenState extends State<LoginScreen> {
         
         // TODO: Naviagte to role based dashboard
         final user = authProvider.user;
-        String route = AppRoutes.patientDashboard;
+        String route = AppRoutes.clinicianDashboard;
 
         if(user?.isAdmin == true) {
           route = AppRoutes.adminDashboard;

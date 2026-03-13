@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:frontend/core/constants/app_colors.dart';
 import 'package:frontend/core/routes/app_routes.dart';
 import 'package:frontend/features/auth/presentations/providers/auth_provider.dart';
-import 'package:frontend/features/patients/presentation/providers/patient_provider.dart';
 import 'package:frontend/features/appointments/presentations/provider/appointment_provider.dart';
 import 'package:frontend/features/treatment_plans/presentations/providers/treatment_plan_provider.dart';
 import 'package:frontend/features/dashboard/presentation/widgets/app_drawer.dart';
@@ -30,8 +29,6 @@ class _ClinicianDashboardScreenState extends State<ClinicianDashboardScreen> {
   void _loadData() {
     final user = context.read<AuthProvider>().user;
     if (user != null) {
-      // Load patients assigned to this clinician
-      context.read<PatientProvider>().fetchPatients();
       // Load appointments for this clinician
       context.read<AppointmentProvider>().fetchAppointments();
       // Load treatment plans for this clinician
@@ -42,7 +39,6 @@ class _ClinicianDashboardScreenState extends State<ClinicianDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
-    final patientProvider = context.watch<PatientProvider>();
     final appointmentProvider = context.watch<AppointmentProvider>();
     final treatmentPlanProvider = context.watch<TreatmentPlanProvider>();
     final user = authProvider.user;
@@ -64,10 +60,11 @@ class _ClinicianDashboardScreenState extends State<ClinicianDashboardScreen> {
              apt.scheduledAt.day == today.day;
     }).toList();
 
-    // Filter patients assigned to this clinician
-    final myPatients = patientProvider.patients
-        .where((patient) => patient.assignedClinicianIds.contains(clinicianId))
-        .toList();
+    final uniquePatientCount = allAppointments
+      .map((a) => a.patientId)
+      .where((id) => id.isNotEmpty)
+      .toSet()
+      .length;
 
     // Filter treatment plans created by this clinician
     final myTreatmentPlans = treatmentPlanProvider.treatmentPlans
@@ -124,11 +121,11 @@ class _ClinicianDashboardScreenState extends State<ClinicianDashboardScreen> {
                 children: [
                   StatsCard(
                     title: 'My Patients',
-                    value: myPatients.length.toString(),
+                    value: uniquePatientCount.toString(),
                     icon: Icons.people,
                     color: AppColors.success,
                     onTap: () {
-                      Navigator.pushNamed(context, AppRoutes.patients);
+                      Navigator.pushNamed(context, AppRoutes.appointments);
                     },
                   ),
                   StatsCard(

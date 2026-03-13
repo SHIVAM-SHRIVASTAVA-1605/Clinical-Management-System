@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/features/auth/presentations/providers/auth_provider.dart';
 import 'package:frontend/features/clinicians/presentation/providers/clinician_provider.dart';
-import 'package:frontend/features/patients/presentation/providers/patient_provider.dart';
 import 'package:frontend/features/appointments/presentations/provider/appointment_provider.dart';
 import 'package:frontend/features/treatment_plans/presentations/providers/treatment_plan_provider.dart';
 import 'package:provider/provider.dart';
@@ -25,7 +24,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     // Load data when screen initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ClinicianProvider>().fetchClinicians();
-      context.read<PatientProvider>().fetchPatients();
       context.read<AppointmentProvider>().fetchAppointments();
       context.read<TreatmentPlanProvider>().fetchTreatmentPlans();
     });
@@ -35,14 +33,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
     final clinicianProvider = context.watch<ClinicianProvider>();
-    final patientProvider = context.watch<PatientProvider>();
     final appointmentProvider = context.watch<AppointmentProvider>();
     final treatmentPlanProvider = context.watch<TreatmentPlanProvider>();
     final user = authProvider.user;
 
     // Calculate real-time counts
     final totalClinicians = clinicianProvider.clinicians.length;
-    final totalPatients = patientProvider.patients.length;
+    final totalPatients = appointmentProvider.appointments
+      .map((a) => a.patientId)
+      .where((id) => id.isNotEmpty)
+      .toSet()
+      .length;
     final todayAppointments = appointmentProvider.appointments.where((apt) {
       final today = DateTime.now();
       return apt.scheduledAt.year == today.year &&
@@ -63,7 +64,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           // Refresh all data
           await Future.wait([
             context.read<ClinicianProvider>().fetchClinicians(),
-            context.read<PatientProvider>().fetchPatients(),
             context.read<AppointmentProvider>().fetchAppointments(),
             context.read<TreatmentPlanProvider>().fetchTreatmentPlans(),
           ]);
@@ -111,12 +111,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     },
                   ),
                   StatsCard(
-                    title: 'Total Patients',
+                    title: 'Unique Patients',
                     value: totalPatients.toString(),
                     icon: Icons.people,
                     color: AppColors.success,
                     onTap: () {
-                      Navigator.pushNamed(context, AppRoutes.patients);
+                      Navigator.pushNamed(context, AppRoutes.appointments);
                     },
                   ),
                   StatsCard(

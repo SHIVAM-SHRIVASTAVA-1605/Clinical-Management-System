@@ -25,7 +25,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _confirmPasswordController = TextEditingController();
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
-  String _selectedRole = 'patient'; // Default role
+  String _selectedRole = 'clinician';
 
   @override
   void dispose() {
@@ -63,12 +63,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
           // Navigate back to login
           Navigator.pushReplacementNamed(context, AppRoutes.login);
         } else {
-          // Patient registered successfully
+          // Clinician registered successfully
           ToastHelper.showSuccess(context, 'Registration Successful!');
 
           // Navigate to appropriate dashboard
           final user = authProvider.user;
-          String route = AppRoutes.patientDashboard;
+          String route = AppRoutes.clinicianDashboard;
 
           if (user?.isAdmin == true) {
             route = AppRoutes.adminDashboard;
@@ -145,24 +145,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   child: Column(
                     children: [
-                      RadioListTile<String>(
-                        title: const Row(
-                          children: [
-                            Icon(Icons.person, color: Colors.blue),
-                            SizedBox(width: 8),
-                            Text('Patient'),
-                          ],
-                        ),
-                        subtitle: const Text('Book appointments and manage health'),
-                        value: 'patient',
-                        groupValue: _selectedRole,
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedRole = value!;
-                          });
-                        },
-                      ),
-                      Divider(height: 1, color: Colors.grey.shade300),
                       RadioListTile<String>(
                         title: const Row(
                           children: [

@@ -50,16 +50,6 @@ class AuthService {
         createdAt: DateTime.now().subtract(const Duration(days: 100)),
         isVerified: true,
       ),
-      // Test patient
-      UserModel(
-        id: 'patient1',
-        email: 'patient@test.com',
-        name: 'Test Patient',
-        role: 'patient',
-        phone: '+1234567893',
-        createdAt: DateTime.now().subtract(const Duration(days: 50)),
-        isVerified: true,
-      ),
     ]);
   }
 
@@ -173,6 +163,14 @@ class AuthService {
         };
       }
 
+      // Patient self-registration is disabled in this workflow
+      if (role != 'clinician') {
+        return {
+          'success': false,
+          'message': 'Only clinician registration is allowed.',
+        };
+      }
+
       // Create new user
       final newUser = UserModel(
         id: 'user_${DateTime.now().millisecondsSinceEpoch}',
@@ -196,7 +194,8 @@ class AuthService {
         };
       }
 
-      // For patients, log them in immediately
+      // This branch is currently unreachable because only clinician
+      // self-registration is allowed, but kept for future backend integration.
       final mockResponse = {
         'success': true,
         'token': 'mock_token_${newUser.id}',

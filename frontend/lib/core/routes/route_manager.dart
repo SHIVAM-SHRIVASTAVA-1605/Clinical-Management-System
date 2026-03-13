@@ -10,10 +10,7 @@ import 'package:frontend/features/clinicians/presentation/screens/clinician_deta
 import 'package:frontend/features/clinicians/presentation/screens/clinicians_list_screen.dart';
 import 'package:frontend/features/dashboard/presentation/screens/admin_dashboard_screen.dart';
 import 'package:frontend/features/dashboard/presentation/screens/clinician_dashboard_screen.dart';
-import 'package:frontend/features/dashboard/presentation/screens/patient_dashboard_screen.dart';
 import 'package:frontend/features/dashboard/presentation/screens/profile_screen.dart';
-import 'package:frontend/features/patients/presentation/screens/patient_details_screen.dart';
-import 'package:frontend/features/patients/presentation/screens/patients_list_screen.dart';
 import 'package:frontend/features/treatment_plans/presentations/screens/create_treatment_plan_screen.dart';
 import 'package:frontend/features/treatment_plans/presentations/screens/treatment_plan_details_screen.dart';
 import 'package:frontend/features/treatment_plans/presentations/screens/treatment_plans_list_screen.dart';
@@ -39,9 +36,6 @@ class RouteManager {
       
       case AppRoutes.clinicianDashboard:
         return MaterialPageRoute(builder: (_) => const ClinicianDashboardScreen());
-      
-      case AppRoutes.patientDashboard:
-        return MaterialPageRoute(builder: (_) => const PatientDashboardScreen());
 
       case AppRoutes.clinicians:
         return MaterialPageRoute(builder: (_) => const CliniciansListScreen());
@@ -55,19 +49,6 @@ class RouteManager {
           builder: (_) => ClinicianDetailsScreen(clinicianId: clinicianId),
         );
       
-      case AppRoutes.patients:
-        return MaterialPageRoute(builder: (_) => const PatientsListScreen());
-
-      case AppRoutes.patientDetails:
-        final patientId = settings.arguments as String?;
-        if (patientId == null) {
-          return MaterialPageRoute(builder: (_) => const _NotFoundScreen());
-        }
-        
-        return MaterialPageRoute(
-          builder: (_) => PatientDetailsScreen(patientId: patientId),
-        );
-        
       case AppRoutes.appointments:
         return MaterialPageRoute(builder: (_) => const AppointmentsListScreen());
 
@@ -167,8 +148,6 @@ class _ComingSoonScreen extends StatelessWidget {
     switch (route) {
       case AppRoutes.clinicians:
         return 'Clinicians';
-      case AppRoutes.patients:
-        return 'Patients';
       case AppRoutes.appointments:
         return 'Appointments';
       case AppRoutes.treatmentPlans:

@@ -73,17 +73,6 @@ class AppDrawer extends StatelessWidget {
                     },
                   ),
 
-                // Patients
-                _buildDrawerItem(
-                  context,
-                  icon: Icons.people,
-                  title: 'Patients',
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.pushNamed(context, AppRoutes.patients);
-                  },
-                ),
-
                 // Appointments
                 _buildDrawerItem(
                   context,
@@ -95,8 +84,8 @@ class AppDrawer extends StatelessWidget {
                   },
                 ),
 
-                // Treatment Plans (Clinician & Patient)
-                if (user?.isClinician == true || user?.isPatient == true)
+                // Treatment Plans (Clinician only)
+                if (user?.isClinician == true)
                   _buildDrawerItem(
                     context,
                     icon: Icons.description,
@@ -188,9 +177,8 @@ class AppDrawer extends StatelessWidget {
       case 'clinician':
         Navigator.pushReplacementNamed(context, AppRoutes.clinicianDashboard);
         break;
-      case 'patient':
       default:
-        Navigator.pushReplacementNamed(context, AppRoutes.patientDashboard);
+        Navigator.pushReplacementNamed(context, AppRoutes.clinicianDashboard);
         break;
     }
   }
