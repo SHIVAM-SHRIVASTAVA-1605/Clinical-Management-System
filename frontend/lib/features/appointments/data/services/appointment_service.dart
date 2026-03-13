@@ -5,7 +5,6 @@ import 'package:frontend/core/constants/api_constants.dart';
 // TODO: Implement actual API calls when backend is ready
 
 class AppointmentService {
-  
   static final AppointmentService _instance = AppointmentService._internal();
   factory AppointmentService() => _instance;
   AppointmentService._internal();
@@ -16,7 +15,7 @@ class AppointmentService {
   // Initialize with mock data
   void _initMockData() {
     final now = DateTime.now();
-    
+
     _mockAppointments.addAll([
       // Today's appointments
       _createMockAppointment(
@@ -49,7 +48,7 @@ class AppointmentService {
         type: AppointmentType.checkup,
         status: AppointmentStatus.scheduled,
       ),
-      
+
       // Tomorrow's appointments
       _createMockAppointment(
         id: '4',
@@ -71,7 +70,7 @@ class AppointmentService {
         type: AppointmentType.procedure,
         status: AppointmentStatus.scheduled,
       ),
-      
+
       // Past appointments
       _createMockAppointment(
         id: '6',
@@ -99,22 +98,22 @@ class AppointmentService {
   // Get all appointments
   Future<List<AppointmentModel>> getAllAppointments() async {
     await Future.delayed(const Duration(milliseconds: 500));
-    
+
     if (_mockAppointments.isEmpty) {
       _initMockData();
     }
-    
+
     return _mockAppointments;
   }
 
   // Get appointment by ID
   Future<AppointmentModel?> getAppointmentById(String id) async {
     await Future.delayed(const Duration(milliseconds: 300));
-    
+
     if (_mockAppointments.isEmpty) {
       _initMockData();
     }
-    
+
     try {
       return _mockAppointments.firstWhere((a) => a.id == id);
     } catch (e) {
@@ -123,46 +122,50 @@ class AppointmentService {
   }
 
   // Get appointments by patient ID
-  Future<List<AppointmentModel>> getAppointmentsByPatientId(String patientId) async {
+  Future<List<AppointmentModel>> getAppointmentsByPatientId(
+      String patientId) async {
     await Future.delayed(const Duration(milliseconds: 400));
-    
+
     if (_mockAppointments.isEmpty) {
       _initMockData();
     }
-    
+
     return _mockAppointments.where((a) => a.patientId == patientId).toList();
   }
 
   // Get appointments by clinician ID
-  Future<List<AppointmentModel>> getAppointmentsByClinicianId(String clinicianId) async {
+  Future<List<AppointmentModel>> getAppointmentsByClinicianId(
+      String clinicianId) async {
     await Future.delayed(const Duration(milliseconds: 400));
-    
+
     if (_mockAppointments.isEmpty) {
       _initMockData();
     }
-    
-    return _mockAppointments.where((a) => a.clinicianId == clinicianId).toList();
+
+    return _mockAppointments
+        .where((a) => a.clinicianId == clinicianId)
+        .toList();
   }
 
   // Get today's appointments
   Future<List<AppointmentModel>> getTodaysAppointments() async {
     await Future.delayed(const Duration(milliseconds: 300));
-    
+
     if (_mockAppointments.isEmpty) {
       _initMockData();
     }
-    
+
     return _mockAppointments.where((a) => a.isToday).toList();
   }
 
   // Get upcoming appointments
   Future<List<AppointmentModel>> getUpcomingAppointments() async {
     await Future.delayed(const Duration(milliseconds: 400));
-    
+
     if (_mockAppointments.isEmpty) {
       _initMockData();
     }
-    
+
     return _mockAppointments.where((a) => a.isUpcoming).toList()
       ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
   }
@@ -170,22 +173,23 @@ class AppointmentService {
   // Get appointments by status
   Future<List<AppointmentModel>> getAppointmentsByStatus(String status) async {
     await Future.delayed(const Duration(milliseconds: 400));
-    
+
     if (_mockAppointments.isEmpty) {
       _initMockData();
     }
-    
+
     return _mockAppointments.where((a) => a.status == status).toList();
   }
 
   // Add new appointment
-  Future<Map<String, dynamic>> addAppointment(AppointmentModel appointment) async {
+  Future<Map<String, dynamic>> addAppointment(
+      AppointmentModel appointment) async {
     final endpoint = ApiConstants.appointments;
     // TODO: Replace mock flow with POST endpoint call
     await Future.delayed(const Duration(milliseconds: 800));
-    
+
     _mockAppointments.add(appointment);
-    
+
     return {
       'success': true,
       'message': 'Appointment booked successfully',
@@ -195,11 +199,12 @@ class AppointmentService {
   }
 
   // Update appointment
-  Future<Map<String, dynamic>> updateAppointment(String id, AppointmentModel appointment) async {
+  Future<Map<String, dynamic>> updateAppointment(
+      String id, AppointmentModel appointment) async {
     await Future.delayed(const Duration(milliseconds: 800));
-    
+
     final index = _mockAppointments.indexWhere((a) => a.id == id);
-    
+
     if (index != -1) {
       _mockAppointments[index] = appointment;
       return {
@@ -208,7 +213,7 @@ class AppointmentService {
         'data': appointment.toJson(),
       };
     }
-    
+
     return {
       'success': false,
       'message': 'Appointment not found',
@@ -216,16 +221,31 @@ class AppointmentService {
   }
 
   // Update appointment status
-  Future<Map<String, dynamic>> updateAppointmentStatus(String id, String status) async {
+  Future<Map<String, dynamic>> updateAppointmentStatus(
+      String id, String status) async {
     final endpoint = ApiConstants.appointmentStatus(id);
     // TODO: Replace mock flow with PUT endpoint call
     await Future.delayed(const Duration(milliseconds: 500));
-    
+
     final index = _mockAppointments.indexWhere((a) => a.id == id);
-    
+
     if (index != -1) {
-      _mockAppointments[index] = _mockAppointments[index].copyWith(
+      final current = _mockAppointments[index];
+      final shouldMarkPaid = status == AppointmentStatus.completed &&
+          current.billing.status.toLowerCase() ==
+              BillingStatus.pending.toLowerCase();
+
+      final updatedBilling = shouldMarkPaid
+          ? BillingInfo(
+              amount: current.billing.amount,
+              status: BillingStatus.paid,
+              insuranceDetails: current.billing.insuranceDetails,
+            )
+          : current.billing;
+
+      _mockAppointments[index] = current.copyWith(
         status: status,
+        billing: updatedBilling,
         updatedAt: DateTime.now(),
       );
       return {
@@ -235,7 +255,7 @@ class AppointmentService {
         'data': _mockAppointments[index].toJson(),
       };
     }
-    
+
     return {
       'success': false,
       'message': 'Appointment not found',
@@ -255,18 +275,18 @@ class AppointmentService {
   // Delete appointment
   Future<Map<String, dynamic>> deleteAppointment(String id) async {
     await Future.delayed(const Duration(milliseconds: 500));
-    
+
     final initialLength = _mockAppointments.length;
     _mockAppointments.removeWhere((a) => a.id == id);
     final removed = initialLength != _mockAppointments.length;
-    
+
     if (removed) {
       return {
         'success': true,
         'message': 'Appointment deleted successfully',
       };
     }
-    
+
     return {
       'success': false,
       'message': 'Appointment not found',
@@ -274,7 +294,8 @@ class AppointmentService {
   }
 
   // Endpoint-aligned: POST /appointments
-  Future<Map<String, dynamic>> scheduleAppointment(AppointmentModel appointment) {
+  Future<Map<String, dynamic>> scheduleAppointment(
+      AppointmentModel appointment) {
     return addAppointment(appointment);
   }
 
@@ -351,8 +372,8 @@ class AppointmentService {
       status: status,
       scheduledAt: scheduledAt,
       duration: type == AppointmentType.procedure ? 60 : 30,
-      location: type == AppointmentType.procedure 
-          ? AppointmentLocation.mainClinic 
+      location: type == AppointmentType.procedure
+          ? AppointmentLocation.mainClinic
           : AppointmentLocation.telehealth,
       notes: 'Patient appointment for $type',
       billing: BillingInfo(

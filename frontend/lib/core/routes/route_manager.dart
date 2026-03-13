@@ -5,8 +5,6 @@ import 'package:frontend/features/appointments/presentations/screens/appointment
 import 'package:frontend/features/appointments/presentations/screens/book_appointment_screen.dart';
 import 'package:frontend/features/auth/presentations/screens/login_screen.dart';
 import 'package:frontend/features/auth/presentations/screens/register_screen.dart';
-import 'package:frontend/features/clinicians/presentation/screens/clinician_details_screen.dart';
-import 'package:frontend/features/clinicians/presentation/screens/clinicians_list_screen.dart';
 import 'package:frontend/features/dashboard/presentation/screens/clinician_dashboard_screen.dart';
 import 'package:frontend/features/dashboard/presentation/screens/profile_screen.dart';
 import 'package:frontend/features/treatment_plans/presentations/screens/create_treatment_plan_screen.dart';
@@ -29,18 +27,6 @@ class RouteManager {
       case AppRoutes.clinicianDashboard:
         return MaterialPageRoute(
             builder: (_) => const ClinicianDashboardScreen());
-
-      case AppRoutes.clinicians:
-        return MaterialPageRoute(builder: (_) => const CliniciansListScreen());
-
-      case AppRoutes.clinicianDetails:
-        final clinicianId = settings.arguments as String?;
-        if (clinicianId == null) {
-          return MaterialPageRoute(builder: (_) => const _NotFoundScreen());
-        }
-        return MaterialPageRoute(
-          builder: (_) => ClinicianDetailsScreen(clinicianId: clinicianId),
-        );
 
       case AppRoutes.appointments:
         return MaterialPageRoute(
@@ -142,8 +128,6 @@ class _ComingSoonScreen extends StatelessWidget {
 
   String _getScreenTitle(String route) {
     switch (route) {
-      case AppRoutes.clinicians:
-        return 'Clinicians';
       case AppRoutes.appointments:
         return 'Appointments';
       case AppRoutes.treatmentPlans:

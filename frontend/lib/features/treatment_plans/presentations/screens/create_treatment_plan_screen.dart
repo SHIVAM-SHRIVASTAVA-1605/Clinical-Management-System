@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/core/constants/app_colors.dart';
 import 'package:frontend/features/appointments/presentations/provider/appointment_provider.dart';
-import 'package:frontend/features/clinicians/presentation/providers/clinician_provider.dart';
+import 'package:frontend/features/auth/presentations/providers/auth_provider.dart';
 import 'package:frontend/features/treatment_plans/data/models/treatment_plan_model.dart';
 import 'package:frontend/features/treatment_plans/presentations/providers/treatment_plan_provider.dart';
 import 'package:provider/provider.dart';
@@ -19,6 +19,7 @@ class _CreateTreatmentPlanScreenState extends State<CreateTreatmentPlanScreen> {
 
   String? _selectedPatientId;
   String? _selectedClinicianId;
+  String _selectedClinicianName = '';
 
   String _condition = '';
   String _icd10Code = '';
@@ -32,9 +33,12 @@ class _CreateTreatmentPlanScreenState extends State<CreateTreatmentPlanScreen> {
   @override
   void initState() {
     super.initState();
+    final user = context.read<AuthProvider>().user;
+    _selectedClinicianId = user?.id;
+    _selectedClinicianName = user?.name ?? 'Current Clinician';
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AppointmentProvider>().fetchAppointments();
-      context.read<ClinicianProvider>().fetchClinicians();
     });
   }
 
@@ -51,7 +55,7 @@ class _CreateTreatmentPlanScreenState extends State<CreateTreatmentPlanScreen> {
             const SizedBox(height: 12),
             _buildPatientDropdown(),
             const SizedBox(height: 16),
-            _buildClinicianDropdown(),
+            _buildAssignedClinicianField(),
             const SizedBox(height: 16),
             _buildConditionField(),
             const SizedBox(height: 16),
@@ -101,13 +105,21 @@ class _CreateTreatmentPlanScreenState extends State<CreateTreatmentPlanScreen> {
   }
 
   Widget _buildPatientDropdown() {
-    return Consumer<AppointmentProvider>(
-      builder: (context, provider, child) {
+    return Consumer2<AppointmentProvider, AuthProvider>(
+      builder: (context, provider, authProvider, child) {
         if (provider.isLoading) {
           return const LinearProgressIndicator();
         }
 
-        final patientIds = provider.appointments
+        final currentUser = authProvider.user;
+        final myAppointments = currentUser == null
+            ? provider.appointments
+            : provider.appointments
+                .where(
+                    (appointment) => appointment.clinicianId == currentUser.id)
+                .toList();
+
+        final patientIds = myAppointments
             .map((appointment) => appointment.patientId)
             .where((id) => id.isNotEmpty)
             .toSet()
@@ -136,36 +148,15 @@ class _CreateTreatmentPlanScreenState extends State<CreateTreatmentPlanScreen> {
     );
   }
 
-  Widget _buildClinicianDropdown() {
-    return Consumer<ClinicianProvider>(
-      builder: (context, provider, child) {
-        if (provider.isLoading) {
-          return const LinearProgressIndicator();
-        }
-
-        return DropdownButtonFormField<String>(
-          decoration: const InputDecoration(
-            labelText: 'Clinician',
-            prefixIcon: Icon(Icons.medical_services),
-            border: OutlineInputBorder(),
-          ),
-          value: _selectedClinicianId,
-          items: provider.clinicians
-              .map(
-                (clinician) => DropdownMenuItem(
-                  value: clinician.id,
-                  child: Text(
-                    '${clinician.name.title} ${clinician.name.firstName} ${clinician.name.lastName}',
-                  ),
-                ),
-              )
-              .toList(),
-          onChanged: (value) => setState(() => _selectedClinicianId = value),
-          validator: (value) => value == null || value.isEmpty
-              ? 'Please select a clinician'
-              : null,
-        );
-      },
+  Widget _buildAssignedClinicianField() {
+    return TextFormField(
+      readOnly: true,
+      initialValue: _selectedClinicianName,
+      decoration: const InputDecoration(
+        labelText: 'Clinician (Assigned)',
+        prefixIcon: Icon(Icons.medical_services),
+        border: OutlineInputBorder(),
+      ),
     );
   }
 
@@ -723,6 +714,10 @@ class _CreateTreatmentPlanScreenState extends State<CreateTreatmentPlanScreen> {
       return;
     }
 
+    final currentUser = context.read<AuthProvider>().user;
+    _selectedClinicianId = currentUser?.id;
+    _selectedClinicianName = currentUser?.name ?? _selectedClinicianName;
+
     if (_prescriptions.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -733,9 +728,16 @@ class _CreateTreatmentPlanScreenState extends State<CreateTreatmentPlanScreen> {
       return;
     }
 
-    final clinicianProvider = context.read<ClinicianProvider>();
-    final clinician = clinicianProvider.clinicians
-        .firstWhere((c) => c.id == _selectedClinicianId);
+    if (_selectedClinicianId == null || _selectedClinicianId!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content:
+              Text('Unable to identify current clinician. Please login again.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
 
     final treatmentPlan = TreatmentPlanModel(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -755,8 +757,7 @@ class _CreateTreatmentPlanScreenState extends State<CreateTreatmentPlanScreen> {
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
       patientName: 'Patient ID: $_selectedPatientId',
-      clinicianName:
-          '${clinician.name.title} ${clinician.name.firstName} ${clinician.name.lastName}',
+      clinicianName: _selectedClinicianName,
     );
 
     final provider = context.read<TreatmentPlanProvider>();

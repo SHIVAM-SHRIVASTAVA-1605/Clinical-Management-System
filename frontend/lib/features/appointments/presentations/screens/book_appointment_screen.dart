@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:frontend/core/constants/app_colors.dart';
 import 'package:frontend/features/appointments/data/models/appointment_model.dart';
 import 'package:frontend/features/appointments/presentations/provider/appointment_provider.dart';
-import 'package:frontend/features/clinicians/presentation/providers/clinician_provider.dart';
+import 'package:frontend/features/auth/presentations/providers/auth_provider.dart';
 import 'package:provider/provider.dart';
 
 // Book appointment screen
@@ -19,6 +19,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
   // Form fields
   String? _selectedPatientId;
   String? _selectedClinicianId;
+  String _selectedClinicianName = '';
   String _appointmentType = AppointmentType.consultation;
   String _location = AppointmentLocation.mainClinic;
   DateTime _selectedDate = DateTime.now();
@@ -30,10 +31,9 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
   @override
   void initState() {
     super.initState();
-    // Fetch clinicians
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ClinicianProvider>().fetchClinicians();
-    });
+    final user = context.read<AuthProvider>().user;
+    _selectedClinicianId = user?.id;
+    _selectedClinicianName = user?.name ?? 'Current Clinician';
   }
 
   @override
@@ -51,7 +51,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
             const SizedBox(height: 12),
             _buildPatientIdField(),
             const SizedBox(height: 16),
-            _buildClinicianDropdown(),
+            _buildAssignedClinicianField(),
             const SizedBox(height: 24),
             _buildSectionTitle('Appointment Details'),
             const SizedBox(height: 12),
@@ -113,125 +113,15 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     );
   }
 
-  Widget _buildClinicianDropdown() {
-    return Consumer<ClinicianProvider>(
-      builder: (context, provider, child) {
-        if (provider.isLoading) {
-          return const LinearProgressIndicator();
-        }
-
-        final clinicians = provider.clinicians;
-        final selectedClinician = _selectedClinicianId != null
-            ? clinicians.firstWhere((c) => c.id == _selectedClinicianId,
-                orElse: () => clinicians.first)
-            : null;
-
-        return InkWell(
-          onTap: () => _showClinicianSearchDialog(context, clinicians),
-          child: InputDecorator(
-            decoration: InputDecoration(
-              labelText: 'Select Healthcare Provider',
-              prefixIcon: const Icon(Icons.medical_services),
-              border: const OutlineInputBorder(),
-              errorText: _selectedClinicianId == null ? null : null,
-              suffixIcon: const Icon(Icons.search),
-            ),
-            child: Text(
-              selectedClinician != null
-                  ? '${selectedClinician.name.title} ${selectedClinician.name.firstName} ${selectedClinician.name.lastName} (ID: ${selectedClinician.id.length > 8 ? selectedClinician.id.substring(0, 8) : selectedClinician.id})'
-                  : 'Tap to search and select healthcare provider',
-              style: TextStyle(
-                fontSize: 16,
-                color: selectedClinician != null ? Colors.black : Colors.grey,
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _showClinicianSearchDialog(
-      BuildContext context, List clinicians) async {
-    final TextEditingController searchController = TextEditingController();
-    List filteredClinicians = clinicians;
-
-    await showDialog(
-      context: context,
-      builder: (BuildContext dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: const Text('Select Healthcare Provider'),
-              content: SizedBox(
-                width: double.maxFinite,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: searchController,
-                      decoration: const InputDecoration(
-                        labelText: 'Search by name or ID',
-                        prefixIcon: Icon(Icons.search),
-                        border: OutlineInputBorder(),
-                      ),
-                      onChanged: (value) {
-                        setState(() {
-                          filteredClinicians = clinicians.where((clinician) {
-                            final searchLower = value.toLowerCase();
-                            final fullName =
-                                '${clinician.name.title} ${clinician.name.firstName} ${clinician.name.lastName}'
-                                    .toLowerCase();
-                            return fullName.contains(searchLower) ||
-                                clinician.id
-                                    .toLowerCase()
-                                    .contains(searchLower);
-                          }).toList();
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    Expanded(
-                      child: filteredClinicians.isEmpty
-                          ? const Center(
-                              child: Text('No healthcare providers found'))
-                          : ListView.builder(
-                              shrinkWrap: true,
-                              itemCount: filteredClinicians.length,
-                              itemBuilder: (context, index) {
-                                final clinician = filteredClinicians[index];
-                                return ListTile(
-                                  leading: CircleAvatar(
-                                    child: Text(clinician.name.firstName[0]),
-                                  ),
-                                  title: Text(
-                                      '${clinician.name.title} ${clinician.name.firstName} ${clinician.name.lastName}'),
-                                  subtitle: Text(
-                                      'ID: ${clinician.id}\n${clinician.credentials.specialty}'),
-                                  isThreeLine: true,
-                                  onTap: () {
-                                    this.setState(() {
-                                      _selectedClinicianId = clinician.id;
-                                    });
-                                    Navigator.pop(dialogContext);
-                                  },
-                                );
-                              },
-                            ),
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('Cancel'),
-                ),
-              ],
-            );
-          },
-        );
-      },
+  Widget _buildAssignedClinicianField() {
+    return TextFormField(
+      readOnly: true,
+      initialValue: _selectedClinicianName,
+      decoration: const InputDecoration(
+        labelText: 'Healthcare Provider (Assigned)',
+        prefixIcon: Icon(Icons.medical_services),
+        border: OutlineInputBorder(),
+      ),
     );
   }
 
@@ -435,8 +325,9 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
       return;
     }
 
-    // Get clinician name
-    final clinicianProvider = context.read<ClinicianProvider>();
+    final currentUser = context.read<AuthProvider>().user;
+    _selectedClinicianId = currentUser?.id;
+    _selectedClinicianName = currentUser?.name ?? _selectedClinicianName;
 
     // Validate patient and clinician selection
     if (_selectedPatientId == null) {
@@ -452,16 +343,13 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     if (_selectedClinicianId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please select a healthcare provider'),
+          content:
+              Text('Unable to identify current clinician. Please login again.'),
           backgroundColor: AppColors.error,
         ),
       );
       return;
     }
-
-    final clinician = clinicianProvider.clinicians.firstWhere(
-      (c) => c.id == _selectedClinicianId,
-    );
 
     // Combine date and time
     final scheduledAt = DateTime(
@@ -492,8 +380,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
       patientName: 'Patient ID: $_selectedPatientId',
-      clinicianName:
-          '${clinician.name.title} ${clinician.name.firstName} ${clinician.name.lastName}',
+      clinicianName: _selectedClinicianName,
     );
 
     // Book appointment

@@ -41,7 +41,11 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
           IconButton(
             icon: const Icon(Icons.edit),
             onPressed: () {
-              // TODO: Navigate to edit screen
+              final appointment =
+                  context.read<AppointmentProvider>().selectedAppointment;
+              if (appointment != null) {
+                _showEditAppointmentDialog(appointment);
+              }
             },
           ),
           PopupMenuButton<String>(
@@ -508,6 +512,256 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
       default:
         return Icons.event;
     }
+  }
+
+  Future<void> _showEditAppointmentDialog(AppointmentModel appointment) async {
+    final patientIdController =
+        TextEditingController(text: appointment.patientId);
+    final notesController = TextEditingController(text: appointment.notes);
+    final amountController = TextEditingController(
+        text: appointment.billing.amount.toStringAsFixed(2));
+
+    String selectedType = appointment.appointmentType;
+    String selectedLocation = appointment.location;
+    DateTime selectedDate = DateTime(
+      appointment.scheduledAt.year,
+      appointment.scheduledAt.month,
+      appointment.scheduledAt.day,
+    );
+    TimeOfDay selectedTime = TimeOfDay(
+      hour: appointment.scheduledAt.hour,
+      minute: appointment.scheduledAt.minute,
+    );
+    int selectedDuration = appointment.duration;
+
+    final updated = await showDialog<AppointmentModel>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setLocalState) {
+            return AlertDialog(
+              title: const Text('Edit Appointment'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      controller: patientIdController,
+                      decoration: const InputDecoration(
+                        labelText: 'Patient ID',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      value: selectedType,
+                      decoration: const InputDecoration(
+                        labelText: 'Appointment Type',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: AppointmentType.all
+                          .map(
+                            (type) => DropdownMenuItem(
+                              value: type,
+                              child: Text(type),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setLocalState(() {
+                            selectedType = value;
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      value: selectedLocation,
+                      decoration: const InputDecoration(
+                        labelText: 'Location',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: AppointmentLocation.all
+                          .map(
+                            (location) => DropdownMenuItem(
+                              value: location,
+                              child: Text(location),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setLocalState(() {
+                            selectedLocation = value;
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.calendar_today),
+                      title: const Text('Date'),
+                      subtitle: Text(
+                        '${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
+                      ),
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: selectedDate,
+                          firstDate:
+                              DateTime.now().subtract(const Duration(days: 1)),
+                          lastDate:
+                              DateTime.now().add(const Duration(days: 365)),
+                        );
+                        if (picked != null) {
+                          setLocalState(() {
+                            selectedDate = picked;
+                          });
+                        }
+                      },
+                    ),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.access_time),
+                      title: const Text('Time'),
+                      subtitle: Text(selectedTime.format(context)),
+                      onTap: () async {
+                        final picked = await showTimePicker(
+                          context: context,
+                          initialTime: selectedTime,
+                        );
+                        if (picked != null) {
+                          setLocalState(() {
+                            selectedTime = picked;
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<int>(
+                      value: selectedDuration,
+                      decoration: const InputDecoration(
+                        labelText: 'Duration',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: [15, 30, 45, 60, 90, 120]
+                          .map(
+                            (d) => DropdownMenuItem(
+                              value: d,
+                              child: Text('$d minutes'),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setLocalState(() {
+                            selectedDuration = value;
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: amountController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Billing Amount',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: notesController,
+                      maxLines: 3,
+                      decoration: const InputDecoration(
+                        labelText: 'Notes',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    final patientId = patientIdController.text.trim();
+                    final amount =
+                        double.tryParse(amountController.text.trim());
+
+                    if (patientId.isEmpty || amount == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Enter valid patient ID and amount'),
+                          backgroundColor: AppColors.error,
+                        ),
+                      );
+                      return;
+                    }
+
+                    final scheduledAt = DateTime(
+                      selectedDate.year,
+                      selectedDate.month,
+                      selectedDate.day,
+                      selectedTime.hour,
+                      selectedTime.minute,
+                    );
+
+                    Navigator.pop(
+                      dialogContext,
+                      appointment.copyWith(
+                        patientId: patientId,
+                        appointmentType: selectedType,
+                        location: selectedLocation,
+                        scheduledAt: scheduledAt,
+                        duration: selectedDuration,
+                        notes: notesController.text.trim(),
+                        updatedAt: DateTime.now(),
+                        patientName: 'Patient ID: $patientId',
+                        billing: BillingInfo(
+                          amount: amount,
+                          status: appointment.billing.status,
+                          insuranceDetails:
+                              appointment.billing.insuranceDetails,
+                        ),
+                      ),
+                    );
+                  },
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (updated != null && mounted) {
+      final provider = context.read<AppointmentProvider>();
+      final success =
+          await provider.updateAppointment(widget.appointmentId, updated);
+      if (!mounted) return;
+
+      await provider.fetchAppointmentById(widget.appointmentId);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(success
+              ? 'Appointment updated successfully'
+              : provider.errorMessage ?? 'Failed to update appointment'),
+          backgroundColor: success ? AppColors.success : AppColors.error,
+        ),
+      );
+    }
+
+    patientIdController.dispose();
+    notesController.dispose();
+    amountController.dispose();
   }
 
   void _handleMenuAction(String action) async {

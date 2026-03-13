@@ -7,11 +7,6 @@ class AppRoutes {
   // Dashboard routes
   static const String clinicianDashboard = '/clinician-dashboard';
 
-  // Clinician routes
-  static const String clinicians = '/clinicians';
-  static const String clinicianDetails = '/clinician-details';
-  static const String addClinician = '/add-Clinician';
-
   // Appointments routes
   static const String appointments = '/appointments';
   static const String appointmentDetails = '/appointment-details';
