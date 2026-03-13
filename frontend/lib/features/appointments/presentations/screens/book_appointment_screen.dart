@@ -15,7 +15,7 @@ class BookAppointmentScreen extends StatefulWidget {
 
 class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
   final _formKey = GlobalKey<FormState>();
-  
+
   // Form fields
   String? _selectedPatientId;
   String? _selectedClinicianId;
@@ -52,14 +52,12 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
             _buildPatientIdField(),
             const SizedBox(height: 16),
             _buildClinicianDropdown(),
-            
             const SizedBox(height: 24),
             _buildSectionTitle('Appointment Details'),
             const SizedBox(height: 12),
             _buildAppointmentTypeDropdown(),
             const SizedBox(height: 16),
             _buildLocationDropdown(),
-            
             const SizedBox(height: 24),
             _buildSectionTitle('Schedule'),
             const SizedBox(height: 12),
@@ -68,14 +66,12 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
             _buildTimePicker(),
             const SizedBox(height: 16),
             _buildDurationDropdown(),
-            
             const SizedBox(height: 24),
             _buildSectionTitle('Additional Information'),
             const SizedBox(height: 12),
             _buildNotesField(),
             const SizedBox(height: 16),
             _buildAmountField(),
-            
             const SizedBox(height: 32),
             _buildBookButton(),
             const SizedBox(height: 16),
@@ -155,7 +151,8 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     );
   }
 
-  Future<void> _showClinicianSearchDialog(BuildContext context, List clinicians) async {
+  Future<void> _showClinicianSearchDialog(
+      BuildContext context, List clinicians) async {
     final TextEditingController searchController = TextEditingController();
     List filteredClinicians = clinicians;
 
@@ -182,9 +179,13 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                         setState(() {
                           filteredClinicians = clinicians.where((clinician) {
                             final searchLower = value.toLowerCase();
-                            final fullName = '${clinician.name.title} ${clinician.name.firstName} ${clinician.name.lastName}'.toLowerCase();
+                            final fullName =
+                                '${clinician.name.title} ${clinician.name.firstName} ${clinician.name.lastName}'
+                                    .toLowerCase();
                             return fullName.contains(searchLower) ||
-                                   clinician.id.toLowerCase().contains(searchLower);
+                                clinician.id
+                                    .toLowerCase()
+                                    .contains(searchLower);
                           }).toList();
                         });
                       },
@@ -192,7 +193,8 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                     const SizedBox(height: 16),
                     Expanded(
                       child: filteredClinicians.isEmpty
-                          ? const Center(child: Text('No healthcare providers found'))
+                          ? const Center(
+                              child: Text('No healthcare providers found'))
                           : ListView.builder(
                               shrinkWrap: true,
                               itemCount: filteredClinicians.length,
@@ -202,8 +204,10 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                                   leading: CircleAvatar(
                                     child: Text(clinician.name.firstName[0]),
                                   ),
-                                  title: Text('${clinician.name.title} ${clinician.name.firstName} ${clinician.name.lastName}'),
-                                  subtitle: Text('ID: ${clinician.id}\n${clinician.credentials.specialty}'),
+                                  title: Text(
+                                      '${clinician.name.title} ${clinician.name.firstName} ${clinician.name.lastName}'),
+                                  subtitle: Text(
+                                      'ID: ${clinician.id}\n${clinician.credentials.specialty}'),
                                   isThreeLine: true,
                                   onTap: () {
                                     this.setState(() {
@@ -292,7 +296,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
           firstDate: DateTime.now(),
           lastDate: DateTime.now().add(const Duration(days: 365)),
         );
-        
+
         if (date != null) {
           setState(() {
             _selectedDate = date;
@@ -320,7 +324,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
           context: context,
           initialTime: _selectedTime,
         );
-        
+
         if (time != null) {
           setState(() {
             _selectedTime = time;
@@ -433,7 +437,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
 
     // Get clinician name
     final clinicianProvider = context.read<ClinicianProvider>();
-    
+
     // Validate patient and clinician selection
     if (_selectedPatientId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -454,7 +458,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
       );
       return;
     }
-    
+
     final clinician = clinicianProvider.clinicians.firstWhere(
       (c) => c.id == _selectedClinicianId,
     );
@@ -478,16 +482,18 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
       scheduledAt: scheduledAt,
       duration: _duration,
       location: _location,
-      notes: _notes.isEmpty ? null : _notes,
+      notes: _notes,
       billing: BillingInfo(
         amount: _amount,
-        status: 'Pending',
-        insuranceDetails: null,
+        status: BillingStatus.pending,
+        insuranceDetails:
+            const InsuranceDetails(provider: null, policyNumber: null),
       ),
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
       patientName: 'Patient ID: $_selectedPatientId',
-      clinicianName: '${clinician.name.title} ${clinician.name.firstName} ${clinician.name.lastName}',
+      clinicianName:
+          '${clinician.name.title} ${clinician.name.firstName} ${clinician.name.lastName}',
     );
 
     // Book appointment
@@ -506,7 +512,8 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(provider.errorMessage ?? 'Failed to book appointment'),
+            content:
+                Text(provider.errorMessage ?? 'Failed to book appointment'),
             backgroundColor: AppColors.error,
           ),
         );

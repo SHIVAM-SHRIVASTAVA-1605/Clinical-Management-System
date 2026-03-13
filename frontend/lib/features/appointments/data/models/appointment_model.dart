@@ -1,4 +1,4 @@
-// Appointment model following backend schema
+// Appointment model following 1.2 backend schema
 class AppointmentModel {
   final String id;
   final String patientId;
@@ -8,12 +8,12 @@ class AppointmentModel {
   final DateTime scheduledAt;
   final int duration;
   final String location;
-  final String? notes;
-  final BillingInfo? billing;
-  final DateTime? createdAt;
-  final DateTime? updatedAt;
+  final String notes;
+  final BillingInfo billing;
+  final DateTime createdAt;
+  final DateTime updatedAt;
 
-  // Populated fields (not in DB, fetched separately)
+  // Populated fields (not persisted in backend schema)
   String? patientName;
   String? clinicianName;
 
@@ -26,37 +26,41 @@ class AppointmentModel {
     required this.scheduledAt,
     required this.duration,
     required this.location,
-    this.notes,
-    this.billing,
-    this.createdAt,
-    this.updatedAt,
+    required this.notes,
+    required this.billing,
+    required this.createdAt,
+    required this.updatedAt,
     this.patientName,
     this.clinicianName,
   });
 
-  // From JSON
   factory AppointmentModel.fromJson(Map<String, dynamic> json) {
     return AppointmentModel(
       id: json['id'] ?? json['_id'] ?? '',
       patientId: json['patientId'] ?? '',
       clinicianId: json['clinicianId'] ?? '',
-      appointmentType: json['appointmentType'] ?? 'Consultation',
-      status: json['status'] ?? 'Scheduled',
+      appointmentType: json['appointmentType'] ?? AppointmentType.consultation,
+      status: json['status'] ?? AppointmentStatus.scheduled,
       scheduledAt: json['scheduledAt'] != null
           ? DateTime.parse(json['scheduledAt'])
           : DateTime.now(),
       duration: json['duration'] ?? 30,
-      location: json['location'] ?? 'Main Clinic',
-      notes: json['notes'],
-      billing: json['billing'] != null ? BillingInfo.fromJson(json['billing']) : null,
-      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
-      updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : null,
+      location: json['location'] ?? AppointmentLocation.mainClinic,
+      notes: json['notes']?.toString() ?? '',
+      billing: json['billing'] != null
+          ? BillingInfo.fromJson(json['billing'])
+          : BillingInfo.defaultPending(),
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'])
+          : DateTime.now(),
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.parse(json['updatedAt'])
+          : DateTime.now(),
       patientName: json['patientName'],
       clinicianName: json['clinicianName'],
     );
   }
 
-  // To JSON
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -68,30 +72,40 @@ class AppointmentModel {
       'duration': duration,
       'location': location,
       'notes': notes,
-      'billing': billing?.toJson(),
-      'createdAt': createdAt?.toIso8601String(),
-      'updatedAt': updatedAt?.toIso8601String(),
+      'billing': billing.toJson(),
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
     };
   }
 
-  // End time calculation
   DateTime get endTime => scheduledAt.add(Duration(minutes: duration));
 
-  // Format time helper
   String get formattedTime {
-    final hour = scheduledAt.hour > 12 ? scheduledAt.hour - 12 : scheduledAt.hour;
+    final hour =
+        scheduledAt.hour > 12 ? scheduledAt.hour - 12 : scheduledAt.hour;
     final minute = scheduledAt.minute.toString().padLeft(2, '0');
     final period = scheduledAt.hour >= 12 ? 'PM' : 'AM';
     return '$hour:$minute $period';
   }
 
-  // Format date helper
   String get formattedDate {
-    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     return '${scheduledAt.day} ${months[scheduledAt.month - 1]}, ${scheduledAt.year}';
   }
 
-  // Is today helper
   bool get isToday {
     final now = DateTime.now();
     return scheduledAt.year == now.year &&
@@ -99,13 +113,10 @@ class AppointmentModel {
         scheduledAt.day == now.day;
   }
 
-  // Is upcoming helper
   bool get isUpcoming => scheduledAt.isAfter(DateTime.now());
 
-  // Is past helper
   bool get isPast => scheduledAt.isBefore(DateTime.now());
 
-  // Copy with method
   AppointmentModel copyWith({
     String? id,
     String? patientId,
@@ -141,25 +152,32 @@ class AppointmentModel {
   }
 }
 
-// Billing Information
 class BillingInfo {
   final double amount;
   final String status;
-  final InsuranceDetails? insuranceDetails;
+  final InsuranceDetails insuranceDetails;
 
-  BillingInfo({
+  const BillingInfo({
     required this.amount,
     required this.status,
-    this.insuranceDetails,
+    required this.insuranceDetails,
   });
 
   factory BillingInfo.fromJson(Map<String, dynamic> json) {
     return BillingInfo(
       amount: (json['amount'] ?? 0).toDouble(),
-      status: json['status'] ?? 'Pending',
+      status: json['status'] ?? BillingStatus.pending,
       insuranceDetails: json['insuranceDetails'] != null
           ? InsuranceDetails.fromJson(json['insuranceDetails'])
-          : null,
+          : const InsuranceDetails(provider: null, policyNumber: null),
+    );
+  }
+
+  factory BillingInfo.defaultPending() {
+    return const BillingInfo(
+      amount: 0,
+      status: BillingStatus.pending,
+      insuranceDetails: InsuranceDetails(provider: null, policyNumber: null),
     );
   }
 
@@ -167,19 +185,18 @@ class BillingInfo {
     return {
       'amount': amount,
       'status': status,
-      'insuranceDetails': insuranceDetails?.toJson(),
+      'insuranceDetails': insuranceDetails.toJson(),
     };
   }
 }
 
-// Insurance Details for Billing
 class InsuranceDetails {
   final String? provider;
   final String? policyNumber;
 
-  InsuranceDetails({
-    this.provider,
-    this.policyNumber,
+  const InsuranceDetails({
+    required this.provider,
+    required this.policyNumber,
   });
 
   factory InsuranceDetails.fromJson(Map<String, dynamic> json) {
@@ -197,7 +214,6 @@ class InsuranceDetails {
   }
 }
 
-// Appointment Type Constants
 class AppointmentType {
   static const String consultation = 'Consultation';
   static const String followUp = 'Follow-up';
@@ -214,7 +230,6 @@ class AppointmentType {
       ];
 }
 
-// Appointment Status Constants
 class AppointmentStatus {
   static const String scheduled = 'Scheduled';
   static const String confirmed = 'Confirmed';
@@ -231,7 +246,14 @@ class AppointmentStatus {
       ];
 }
 
-// Appointment Location Constants
+class BillingStatus {
+  static const String pending = 'Pending';
+  static const String paid = 'Paid';
+  static const String insured = 'Insured';
+
+  static List<String> get all => [pending, paid, insured];
+}
+
 class AppointmentLocation {
   static const String mainClinic = 'Main Clinic';
   static const String downtownBranch = 'Downtown Branch';

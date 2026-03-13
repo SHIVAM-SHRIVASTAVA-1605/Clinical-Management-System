@@ -1,4 +1,5 @@
 import 'package:frontend/features/appointments/data/models/appointment_model.dart';
+import 'package:frontend/core/constants/api_constants.dart';
 
 // Appointment service for API calls
 // TODO: Implement actual API calls when backend is ready
@@ -179,6 +180,8 @@ class AppointmentService {
 
   // Add new appointment
   Future<Map<String, dynamic>> addAppointment(AppointmentModel appointment) async {
+    final endpoint = ApiConstants.appointments;
+    // TODO: Replace mock flow with POST endpoint call
     await Future.delayed(const Duration(milliseconds: 800));
     
     _mockAppointments.add(appointment);
@@ -186,6 +189,7 @@ class AppointmentService {
     return {
       'success': true,
       'message': 'Appointment booked successfully',
+      'endpoint': endpoint,
       'data': appointment.toJson(),
     };
   }
@@ -213,6 +217,8 @@ class AppointmentService {
 
   // Update appointment status
   Future<Map<String, dynamic>> updateAppointmentStatus(String id, String status) async {
+    final endpoint = ApiConstants.appointmentStatus(id);
+    // TODO: Replace mock flow with PUT endpoint call
     await Future.delayed(const Duration(milliseconds: 500));
     
     final index = _mockAppointments.indexWhere((a) => a.id == id);
@@ -225,6 +231,7 @@ class AppointmentService {
       return {
         'success': true,
         'message': 'Appointment status updated',
+        'endpoint': endpoint,
         'data': _mockAppointments[index].toJson(),
       };
     }
@@ -264,6 +271,65 @@ class AppointmentService {
       'success': false,
       'message': 'Appointment not found',
     };
+  }
+
+  // Endpoint-aligned: POST /appointments
+  Future<Map<String, dynamic>> scheduleAppointment(AppointmentModel appointment) {
+    return addAppointment(appointment);
+  }
+
+  // Endpoint-aligned: GET /appointments/patient/:id with pagination
+  Future<Map<String, dynamic>> getAppointmentsByPatientPaginated(
+    String patientId, {
+    int page = 1,
+    int limit = 10,
+  }) async {
+    final endpoint = ApiConstants.appointmentsByPatient(patientId);
+    // TODO: Replace mock flow with GET endpoint call and query params
+    final records = await getAppointmentsByPatientId(patientId);
+    final safePage = page < 1 ? 1 : page;
+    final safeLimit = limit < 1 ? 10 : limit;
+    final start = (safePage - 1) * safeLimit;
+    final end = start + safeLimit;
+    final paged = start >= records.length
+        ? <AppointmentModel>[]
+        : records.sublist(start, end > records.length ? records.length : end);
+
+    return {
+      'success': true,
+      'endpoint': endpoint,
+      'data': paged.map((e) => e.toJson()).toList(),
+      'pagination': {
+        'page': safePage,
+        'limit': safeLimit,
+        'total': records.length,
+        'totalPages': (records.length / safeLimit).ceil(),
+      },
+    };
+  }
+
+  // Endpoint-aligned: GET /appointments/clinician/:id with filters
+  Future<List<AppointmentModel>> getAppointmentsByClinicianWithFilters(
+    String clinicianId, {
+    String? status,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    final endpoint = ApiConstants.appointmentsByClinician(clinicianId);
+    // TODO: Replace mock flow with GET endpoint call and query filters
+    var result = await getAppointmentsByClinicianId(clinicianId);
+
+    if (status != null && status.isNotEmpty) {
+      result = result.where((a) => a.status == status).toList();
+    }
+    if (startDate != null) {
+      result = result.where((a) => !a.scheduledAt.isBefore(startDate)).toList();
+    }
+    if (endDate != null) {
+      result = result.where((a) => !a.scheduledAt.isAfter(endDate)).toList();
+    }
+    if (endpoint.isEmpty) return <AppointmentModel>[];
+    return result;
   }
 
   // Helper to create mock appointment

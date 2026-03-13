@@ -1,4 +1,5 @@
 import '../models/clinician_model.dart';
+import 'package:frontend/core/constants/api_constants.dart';
 
 // Clinician service for API calls
 // TODO: Implement actual API calls when backend is ready
@@ -57,7 +58,8 @@ class ClinicianService {
 
   // Get clinician by ID
   Future<ClinicianModel?> getClinicianById(String id) async {
-    // TODO: Replace with actual API call
+    final endpoint = ApiConstants.clinicianById(id);
+    // TODO: Replace mock flow with GET endpoint call
     
     await Future.delayed(const Duration(milliseconds: 300));
     
@@ -66,7 +68,10 @@ class ClinicianService {
     }
     
     try {
-      return _mockClinicians.firstWhere((c) => c.id == id);
+      final clinician = _mockClinicians.firstWhere((c) => c.id == id);
+      // Keep endpoint referenced until backend integration.
+      if (endpoint.isEmpty) return null;
+      return clinician;
     } catch (e) {
       return null;
     }
@@ -74,7 +79,8 @@ class ClinicianService {
 
   // Add new clinician
   Future<Map<String, dynamic>> addClinician(ClinicianModel clinician) async {
-    // TODO: Replace with actual API call
+    final endpoint = ApiConstants.clinicians;
+    // TODO: Replace mock flow with POST endpoint call
     
     await Future.delayed(const Duration(milliseconds: 800));
     
@@ -83,13 +89,15 @@ class ClinicianService {
     return {
       'success': true,
       'message': 'Clinician added successfully',
+      'endpoint': endpoint,
       'data': clinician.toJson(),
     };
   }
 
   // Update clinician
   Future<Map<String, dynamic>> updateClinician(String id, ClinicianModel clinician) async {
-    // TODO: Replace with actual API call
+    final endpoint = ApiConstants.clinicianById(id);
+    // TODO: Replace mock flow with PUT endpoint call
     
     await Future.delayed(const Duration(milliseconds: 800));
     
@@ -100,6 +108,7 @@ class ClinicianService {
       return {
         'success': true,
         'message': 'Clinician updated successfully',
+        'endpoint': endpoint,
         'data': clinician.toJson(),
       };
     }
@@ -131,6 +140,47 @@ class ClinicianService {
       'success': false,
       'message': 'Clinician not found',
     };
+  }
+
+  // Update clinician availability schedule
+  Future<Map<String, dynamic>> updateClinicianAvailability(
+    String id,
+    List<ClinicianAvailability> availability,
+  ) async {
+    final endpoint = ApiConstants.clinicianAvailability(id);
+    // TODO: Replace mock flow with PUT endpoint call
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    final index = _mockClinicians.indexWhere((c) => c.id == id);
+    if (index != -1) {
+      final existing = _mockClinicians[index];
+      _mockClinicians[index] = ClinicianModel(
+        id: existing.id,
+        name: existing.name,
+        credentials: existing.credentials,
+        contact: existing.contact,
+        availability: availability,
+        createdAt: existing.createdAt,
+        updatedAt: DateTime.now(),
+      );
+      return {
+        'success': true,
+        'message': 'Clinician availability updated successfully',
+        'endpoint': endpoint,
+        'data': _mockClinicians[index].toJson(),
+      };
+    }
+
+    return {
+      'success': false,
+      'message': 'Clinician not found',
+    };
+  }
+
+  // Endpoint-aligned alias for clinician registration
+  Future<Map<String, dynamic>> registerClinician(ClinicianModel clinician) {
+    // POST /clinicians
+    return addClinician(clinician);
   }
 
   // Search clinicians

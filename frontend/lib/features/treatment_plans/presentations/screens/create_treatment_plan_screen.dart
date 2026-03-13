@@ -6,34 +6,32 @@ import 'package:frontend/features/treatment_plans/data/models/treatment_plan_mod
 import 'package:frontend/features/treatment_plans/presentations/providers/treatment_plan_provider.dart';
 import 'package:provider/provider.dart';
 
-// Create Treatment Plan screen
 class CreateTreatmentPlanScreen extends StatefulWidget {
   const CreateTreatmentPlanScreen({super.key});
 
   @override
-  State<CreateTreatmentPlanScreen> createState() => _CreateTreatmentPlanScreenState();
+  State<CreateTreatmentPlanScreen> createState() =>
+      _CreateTreatmentPlanScreenState();
 }
 
 class _CreateTreatmentPlanScreenState extends State<CreateTreatmentPlanScreen> {
   final _formKey = GlobalKey<FormState>();
-  
-  // Form fields
+
   String? _selectedPatientId;
   String? _selectedClinicianId;
-  String _diagnosis = '';
-  String _status = TreatmentPlanStatus.active;
-  DateTime _startDate = DateTime.now();
-  DateTime? _endDate;
-  String _notes = '';
-  
-  // Prescriptions and Care Instructions
+
+  String _condition = '';
+  String _icd10Code = '';
+  DateTime _diagnosedAt = DateTime.now();
+
   final List<Prescription> _prescriptions = [];
-  final List<CareInstruction> _careInstructions = [];
+  final List<FollowUp> _followUps = [];
+  final List<String> _lifestyleChanges = [];
+  final List<Referral> _referrals = [];
 
   @override
   void initState() {
     super.initState();
-    // Fetch appointments and clinicians
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AppointmentProvider>().fetchAppointments();
       context.read<ClinicianProvider>().fetchClinicians();
@@ -43,9 +41,7 @@ class _CreateTreatmentPlanScreenState extends State<CreateTreatmentPlanScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Create Treatment Plan'),
-      ),
+      appBar: AppBar(title: const Text('Create Treatment Plan')),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -57,36 +53,33 @@ class _CreateTreatmentPlanScreenState extends State<CreateTreatmentPlanScreen> {
             const SizedBox(height: 16),
             _buildClinicianDropdown(),
             const SizedBox(height: 16),
-            _buildDiagnosisField(),
+            _buildConditionField(),
             const SizedBox(height: 16),
-            _buildStatusDropdown(),
-            
-            const SizedBox(height: 24),
-            _buildSectionTitle('Treatment Duration'),
-            const SizedBox(height: 12),
-            _buildStartDatePicker(),
+            _buildIcd10Field(),
             const SizedBox(height: 16),
-            _buildEndDatePicker(),
-            
+            _buildDiagnosedAtPicker(),
             const SizedBox(height: 24),
             _buildSectionTitle('Prescriptions'),
             const SizedBox(height: 12),
             _buildPrescriptionsList(),
             const SizedBox(height: 12),
             _buildAddPrescriptionButton(),
-            
             const SizedBox(height: 24),
-            _buildSectionTitle('Care Instructions'),
+            _buildSectionTitle('Follow-Ups'),
             const SizedBox(height: 12),
-            _buildCareInstructionsList(),
+            _buildFollowUpsList(),
             const SizedBox(height: 12),
-            _buildAddCareInstructionButton(),
-            
+            _buildAddFollowUpButton(),
             const SizedBox(height: 24),
-            _buildSectionTitle('Additional Notes'),
+            _buildSectionTitle('Recommendations'),
             const SizedBox(height: 12),
-            _buildNotesField(),
-            
+            _buildLifestyleChangesList(),
+            const SizedBox(height: 12),
+            _buildAddLifestyleChangeButton(),
+            const SizedBox(height: 16),
+            _buildReferralsList(),
+            const SizedBox(height: 12),
+            _buildAddReferralButton(),
             const SizedBox(height: 32),
             _buildCreateButton(),
             const SizedBox(height: 16),
@@ -123,28 +116,21 @@ class _CreateTreatmentPlanScreenState extends State<CreateTreatmentPlanScreen> {
 
         return DropdownButtonFormField<String>(
           decoration: const InputDecoration(
-            labelText: 'Select Patient ID',
+            labelText: 'Patient ID',
             prefixIcon: Icon(Icons.person),
             border: OutlineInputBorder(),
           ),
           value: _selectedPatientId,
-          items: patientIds.map((patientId) {
-            return DropdownMenuItem(
-              value: patientId,
-              child: Text(patientId),
-            );
-          }).toList(),
-          onChanged: (value) {
-            setState(() {
-              _selectedPatientId = value;
-            });
-          },
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Please select a patient ID';
-            }
-            return null;
-          },
+          items: patientIds
+              .map((patientId) => DropdownMenuItem(
+                    value: patientId,
+                    child: Text(patientId),
+                  ))
+              .toList(),
+          onChanged: (value) => setState(() => _selectedPatientId = value),
+          validator: (value) => value == null || value.isEmpty
+              ? 'Please select a patient ID'
+              : null,
         );
       },
     );
@@ -157,146 +143,83 @@ class _CreateTreatmentPlanScreenState extends State<CreateTreatmentPlanScreen> {
           return const LinearProgressIndicator();
         }
 
-        final clinicians = provider.clinicians;
-
         return DropdownButtonFormField<String>(
           decoration: const InputDecoration(
-            labelText: 'Select Healthcare Provider',
+            labelText: 'Clinician',
             prefixIcon: Icon(Icons.medical_services),
             border: OutlineInputBorder(),
           ),
           value: _selectedClinicianId,
-          items: clinicians.map((clinician) {
-            return DropdownMenuItem(
-              value: clinician.id,
-              child: Text('${clinician.name.title} ${clinician.name.firstName} ${clinician.name.lastName}'),
-            );
-          }).toList(),
-          onChanged: (value) {
-            setState(() {
-              _selectedClinicianId = value;
-            });
-          },
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Please select a healthcare provider';
-            }
-            return null;
-          },
+          items: provider.clinicians
+              .map(
+                (clinician) => DropdownMenuItem(
+                  value: clinician.id,
+                  child: Text(
+                    '${clinician.name.title} ${clinician.name.firstName} ${clinician.name.lastName}',
+                  ),
+                ),
+              )
+              .toList(),
+          onChanged: (value) => setState(() => _selectedClinicianId = value),
+          validator: (value) => value == null || value.isEmpty
+              ? 'Please select a clinician'
+              : null,
         );
       },
     );
   }
 
-  Widget _buildDiagnosisField() {
+  Widget _buildConditionField() {
     return TextFormField(
       decoration: const InputDecoration(
-        labelText: 'Diagnosis',
+        labelText: 'Condition',
+        hintText: 'e.g., Hypertension',
         prefixIcon: Icon(Icons.medical_information),
         border: OutlineInputBorder(),
-        hintText: 'e.g., Hypertension, Type 2 Diabetes',
       ),
-      onChanged: (value) {
-        _diagnosis = value;
-      },
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'Please enter diagnosis';
-        }
-        return null;
-      },
+      onChanged: (value) => _condition = value.trim(),
+      validator: (value) => value == null || value.trim().isEmpty
+          ? 'Please enter condition'
+          : null,
     );
   }
 
-  Widget _buildStatusDropdown() {
-    return DropdownButtonFormField<String>(
+  Widget _buildIcd10Field() {
+    return TextFormField(
       decoration: const InputDecoration(
-        labelText: 'Status',
-        prefixIcon: Icon(Icons.flag),
+        labelText: 'ICD-10 Code',
+        hintText: 'e.g., I10, E11.9',
+        prefixIcon: Icon(Icons.tag),
         border: OutlineInputBorder(),
       ),
-      value: _status,
-      items: TreatmentPlanStatus.all.map((status) {
-        return DropdownMenuItem(
-          value: status,
-          child: Text(status),
-        );
-      }).toList(),
-      onChanged: (value) {
-        setState(() {
-          _status = value!;
-        });
-      },
+      onChanged: (value) => _icd10Code = value.trim(),
+      validator: (value) => value == null || value.trim().isEmpty
+          ? 'Please enter ICD-10 code'
+          : null,
     );
   }
 
-  Widget _buildStartDatePicker() {
+  Widget _buildDiagnosedAtPicker() {
     return InkWell(
       onTap: () async {
-        final date = await showDatePicker(
+        final picked = await showDatePicker(
           context: context,
-          initialDate: _startDate,
-          firstDate: DateTime.now().subtract(const Duration(days: 365)),
-          lastDate: DateTime.now().add(const Duration(days: 365)),
+          initialDate: _diagnosedAt,
+          firstDate: DateTime.now().subtract(const Duration(days: 3650)),
+          lastDate: DateTime.now(),
         );
-        
-        if (date != null) {
-          setState(() {
-            _startDate = date;
-          });
+        if (picked != null) {
+          setState(() => _diagnosedAt = picked);
         }
       },
       child: InputDecorator(
         decoration: const InputDecoration(
-          labelText: 'Start Date',
+          labelText: 'Diagnosed At',
           prefixIcon: Icon(Icons.calendar_today),
           border: OutlineInputBorder(),
         ),
         child: Text(
-          '${_startDate.day}/${_startDate.month}/${_startDate.year}',
-          style: const TextStyle(fontSize: 16),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEndDatePicker() {
-    return InkWell(
-      onTap: () async {
-        final date = await showDatePicker(
-          context: context,
-          initialDate: _endDate ?? _startDate.add(const Duration(days: 30)),
-          firstDate: _startDate,
-          lastDate: DateTime.now().add(const Duration(days: 730)),
-        );
-        
-        if (date != null) {
-          setState(() {
-            _endDate = date;
-          });
-        }
-      },
-      child: InputDecorator(
-        decoration: InputDecoration(
-          labelText: 'End Date (Optional)',
-          prefixIcon: const Icon(Icons.event_available),
-          border: const OutlineInputBorder(),
-          suffixIcon: _endDate != null
-              ? IconButton(
-                  icon: const Icon(Icons.clear),
-                  onPressed: () {
-                    setState(() {
-                      _endDate = null;
-                    });
-                  },
-                )
-              : null,
-        ),
-        child: Text(
-          _endDate != null
-              ? '${_endDate!.day}/${_endDate!.month}/${_endDate!.year}'
-              : 'Ongoing',
-          style: const TextStyle(fontSize: 16),
+          '${_diagnosedAt.day}/${_diagnosedAt.month}/${_diagnosedAt.year}',
         ),
       ),
     );
@@ -304,40 +227,22 @@ class _CreateTreatmentPlanScreenState extends State<CreateTreatmentPlanScreen> {
 
   Widget _buildPrescriptionsList() {
     if (_prescriptions.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.grey.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey.withOpacity(0.3)),
-        ),
-        child: const Center(
-          child: Text(
-            'No prescriptions added yet',
-            style: TextStyle(color: AppColors.textSecondary),
-          ),
-        ),
-      );
+      return _buildEmptyBox('No prescriptions added yet');
     }
 
     return Column(
       children: _prescriptions.asMap().entries.map((entry) {
         final index = entry.key;
-        final prescription = entry.value;
-        
+        final p = entry.value;
         return Card(
           margin: const EdgeInsets.only(bottom: 8),
           child: ListTile(
-            leading: const Icon(Icons.medication, color: Colors.purple),
-            title: Text(prescription.medicationName),
-            subtitle: Text('${prescription.dosage} - ${prescription.frequency}'),
+            leading: const Icon(Icons.medication, color: Colors.indigo),
+            title: Text(p.medication),
+            subtitle: Text('${p.dosage} • ${p.frequency}'),
             trailing: IconButton(
               icon: const Icon(Icons.delete, color: AppColors.error),
-              onPressed: () {
-                setState(() {
-                  _prescriptions.removeAt(index);
-                });
-              },
+              onPressed: () => setState(() => _prescriptions.removeAt(index)),
             ),
           ),
         );
@@ -347,51 +252,32 @@ class _CreateTreatmentPlanScreenState extends State<CreateTreatmentPlanScreen> {
 
   Widget _buildAddPrescriptionButton() {
     return OutlinedButton.icon(
-      onPressed: () => _showAddPrescriptionDialog(),
+      onPressed: _showAddPrescriptionDialog,
       icon: const Icon(Icons.add),
       label: const Text('Add Prescription'),
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-      ),
     );
   }
 
-  Widget _buildCareInstructionsList() {
-    if (_careInstructions.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.grey.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey.withOpacity(0.3)),
-        ),
-        child: const Center(
-          child: Text(
-            'No care instructions added yet',
-            style: TextStyle(color: AppColors.textSecondary),
-          ),
-        ),
-      );
+  Widget _buildFollowUpsList() {
+    if (_followUps.isEmpty) {
+      return _buildEmptyBox('No follow-ups added yet');
     }
 
     return Column(
-      children: _careInstructions.asMap().entries.map((entry) {
+      children: _followUps.asMap().entries.map((entry) {
         final index = entry.key;
-        final instruction = entry.value;
-        
+        final f = entry.value;
         return Card(
           margin: const EdgeInsets.only(bottom: 8),
           child: ListTile(
-            leading: Icon(_getCategoryIcon(instruction.category), color: Colors.orange),
-            title: Text(instruction.instruction),
-            subtitle: Text('${instruction.category} ${instruction.frequency != null ? "- ${instruction.frequency}" : ""}'),
+            leading: const Icon(Icons.event_repeat, color: Colors.teal),
+            title: Text(f.purpose),
+            subtitle: Text(
+              '${f.scheduledDate.day}/${f.scheduledDate.month}/${f.scheduledDate.year} • ${f.status}',
+            ),
             trailing: IconButton(
               icon: const Icon(Icons.delete, color: AppColors.error),
-              onPressed: () {
-                setState(() {
-                  _careInstructions.removeAt(index);
-                });
-              },
+              onPressed: () => setState(() => _followUps.removeAt(index)),
             ),
           ),
         );
@@ -399,29 +285,77 @@ class _CreateTreatmentPlanScreenState extends State<CreateTreatmentPlanScreen> {
     );
   }
 
-  Widget _buildAddCareInstructionButton() {
+  Widget _buildAddFollowUpButton() {
     return OutlinedButton.icon(
-      onPressed: () => _showAddCareInstructionDialog(),
+      onPressed: _showAddFollowUpDialog,
       icon: const Icon(Icons.add),
-      label: const Text('Add Care Instruction'),
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-      ),
+      label: const Text('Add Follow-Up'),
     );
   }
 
-  Widget _buildNotesField() {
-    return TextFormField(
-      decoration: const InputDecoration(
-        labelText: 'Notes (Optional)',
-        prefixIcon: Icon(Icons.note),
-        border: OutlineInputBorder(),
-        alignLabelWithHint: true,
-      ),
-      maxLines: 4,
-      onChanged: (value) {
-        _notes = value;
-      },
+  Widget _buildLifestyleChangesList() {
+    if (_lifestyleChanges.isEmpty) {
+      return _buildEmptyBox('No lifestyle changes added yet');
+    }
+
+    return Column(
+      children: _lifestyleChanges.asMap().entries.map((entry) {
+        final index = entry.key;
+        final text = entry.value;
+        return Card(
+          margin: const EdgeInsets.only(bottom: 8),
+          child: ListTile(
+            leading: const Icon(Icons.self_improvement, color: Colors.blue),
+            title: Text(text),
+            trailing: IconButton(
+              icon: const Icon(Icons.delete, color: AppColors.error),
+              onPressed: () =>
+                  setState(() => _lifestyleChanges.removeAt(index)),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildAddLifestyleChangeButton() {
+    return OutlinedButton.icon(
+      onPressed: _showAddLifestyleChangeDialog,
+      icon: const Icon(Icons.add),
+      label: const Text('Add Lifestyle Change'),
+    );
+  }
+
+  Widget _buildReferralsList() {
+    if (_referrals.isEmpty) {
+      return _buildEmptyBox('No referrals added yet');
+    }
+
+    return Column(
+      children: _referrals.asMap().entries.map((entry) {
+        final index = entry.key;
+        final referral = entry.value;
+        return Card(
+          margin: const EdgeInsets.only(bottom: 8),
+          child: ListTile(
+            leading: const Icon(Icons.outbound, color: Colors.deepPurple),
+            title: Text(referral.specialist),
+            subtitle: Text(referral.reason),
+            trailing: IconButton(
+              icon: const Icon(Icons.delete, color: AppColors.error),
+              onPressed: () => setState(() => _referrals.removeAt(index)),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildAddReferralButton() {
+    return OutlinedButton.icon(
+      onPressed: _showAddReferralDialog,
+      icon: const Icon(Icons.add),
+      label: const Text('Add Referral'),
     );
   }
 
@@ -431,14 +365,10 @@ class _CreateTreatmentPlanScreenState extends State<CreateTreatmentPlanScreen> {
         if (provider.isLoading) {
           return const Center(child: CircularProgressIndicator());
         }
-
         return ElevatedButton(
           onPressed: _createTreatmentPlan,
           style: ElevatedButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
           ),
           child: const Text(
             'Create Treatment Plan',
@@ -449,135 +379,318 @@ class _CreateTreatmentPlanScreenState extends State<CreateTreatmentPlanScreen> {
     );
   }
 
+  Widget _buildEmptyBox(String message) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.withOpacity(0.3)),
+      ),
+      child: Center(
+        child: Text(
+          message,
+          style: const TextStyle(color: AppColors.textSecondary),
+        ),
+      ),
+    );
+  }
+
   void _showAddPrescriptionDialog() {
-    String medicationName = '';
+    String medication = '';
     String dosage = '';
-    String frequency = PrescriptionFrequency.onceDailyl;
-    String duration = '';
+    String frequency = PrescriptionFrequency.onceDaily;
+    DateTime startDate = DateTime.now();
+    DateTime? endDate;
     String instructions = '';
 
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Add Prescription'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                decoration: const InputDecoration(
-                  labelText: 'Medication Name',
-                  border: OutlineInputBorder(),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Add Prescription'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  decoration: const InputDecoration(
+                    labelText: 'Medication',
+                    border: OutlineInputBorder(),
+                  ),
+                  onChanged: (value) => medication = value.trim(),
                 ),
-                onChanged: (value) => medicationName = value,
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                decoration: const InputDecoration(
-                  labelText: 'Dosage (e.g., 10mg)',
-                  border: OutlineInputBorder(),
+                const SizedBox(height: 12),
+                TextField(
+                  decoration: const InputDecoration(
+                    labelText: 'Dosage',
+                    border: OutlineInputBorder(),
+                  ),
+                  onChanged: (value) => dosage = value.trim(),
                 ),
-                onChanged: (value) => dosage = value,
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                decoration: const InputDecoration(
-                  labelText: 'Frequency',
-                  border: OutlineInputBorder(),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  decoration: const InputDecoration(
+                    labelText: 'Frequency',
+                    border: OutlineInputBorder(),
+                  ),
+                  value: frequency,
+                  items: PrescriptionFrequency.all
+                      .map((f) => DropdownMenuItem(value: f, child: Text(f)))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      frequency = value;
+                    }
+                  },
                 ),
-                value: frequency,
-                items: PrescriptionFrequency.all.map((freq) {
-                  return DropdownMenuItem(value: freq, child: Text(freq));
-                }).toList(),
-                onChanged: (value) => frequency = value!,
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                decoration: const InputDecoration(
-                  labelText: 'Duration (e.g., 30 days)',
-                  border: OutlineInputBorder(),
+                const SizedBox(height: 12),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.calendar_today),
+                  title: const Text('Start Date'),
+                  subtitle: Text(
+                    '${startDate.day}/${startDate.month}/${startDate.year}',
+                  ),
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: dialogContext,
+                      initialDate: startDate,
+                      firstDate:
+                          DateTime.now().subtract(const Duration(days: 3650)),
+                      lastDate: DateTime.now().add(const Duration(days: 3650)),
+                    );
+                    if (picked != null) {
+                      setDialogState(() => startDate = picked);
+                    }
+                  },
                 ),
-                onChanged: (value) => duration = value,
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                decoration: const InputDecoration(
-                  labelText: 'Instructions (Optional)',
-                  border: OutlineInputBorder(),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.event_available),
+                  title: const Text('End Date (Optional)'),
+                  subtitle: Text(
+                    endDate == null
+                        ? 'Ongoing'
+                        : '${endDate!.day}/${endDate!.month}/${endDate!.year}',
+                  ),
+                  trailing: endDate == null
+                      ? null
+                      : IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () => setDialogState(() => endDate = null),
+                        ),
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: dialogContext,
+                      initialDate: endDate ?? startDate,
+                      firstDate: startDate,
+                      lastDate: DateTime.now().add(const Duration(days: 3650)),
+                    );
+                    if (picked != null) {
+                      setDialogState(() => endDate = picked);
+                    }
+                  },
                 ),
-                maxLines: 2,
-                onChanged: (value) => instructions = value,
-              ),
-            ],
+                const SizedBox(height: 8),
+                TextField(
+                  decoration: const InputDecoration(
+                    labelText: 'Instructions',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 2,
+                  onChanged: (value) => instructions = value.trim(),
+                ),
+              ],
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              if (medicationName.isNotEmpty && dosage.isNotEmpty && duration.isNotEmpty) {
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                if (medication.isEmpty ||
+                    dosage.isEmpty ||
+                    instructions.isEmpty) {
+                  return;
+                }
                 setState(() {
-                  _prescriptions.add(Prescription(
-                    medicationName: medicationName,
-                    dosage: dosage,
-                    frequency: frequency,
-                    duration: duration,
-                    instructions: instructions.isEmpty ? null : instructions,
-                  ));
+                  _prescriptions.add(
+                    Prescription(
+                      medication: medication,
+                      dosage: dosage,
+                      frequency: frequency,
+                      startDate: startDate,
+                      endDate: endDate,
+                      instructions: instructions,
+                    ),
+                  );
                 });
                 Navigator.pop(dialogContext);
-              }
-            },
-            child: const Text('Add'),
-          ),
-        ],
+              },
+              child: const Text('Add'),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  void _showAddCareInstructionDialog() {
-    String instruction = '';
-    String category = CareCategory.diet;
-    String frequency = '';
+  void _showAddFollowUpDialog() {
+    DateTime scheduledDate = DateTime.now().add(const Duration(days: 7));
+    String purpose = '';
+    String status = FollowUpStatus.pending;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Add Follow-Up'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.calendar_today),
+                  title: const Text('Scheduled Date'),
+                  subtitle: Text(
+                    '${scheduledDate.day}/${scheduledDate.month}/${scheduledDate.year}',
+                  ),
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: dialogContext,
+                      initialDate: scheduledDate,
+                      firstDate:
+                          DateTime.now().subtract(const Duration(days: 365)),
+                      lastDate: DateTime.now().add(const Duration(days: 3650)),
+                    );
+                    if (picked != null) {
+                      setDialogState(() => scheduledDate = picked);
+                    }
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  decoration: const InputDecoration(
+                    labelText: 'Purpose',
+                    hintText: 'e.g., Monitor Medication',
+                    border: OutlineInputBorder(),
+                  ),
+                  onChanged: (value) => purpose = value.trim(),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  decoration: const InputDecoration(
+                    labelText: 'Status',
+                    border: OutlineInputBorder(),
+                  ),
+                  value: status,
+                  items: FollowUpStatus.all
+                      .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      status = value;
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                if (purpose.isEmpty) {
+                  return;
+                }
+                setState(() {
+                  _followUps.add(
+                    FollowUp(
+                      scheduledDate: scheduledDate,
+                      purpose: purpose,
+                      status: status,
+                    ),
+                  );
+                });
+                Navigator.pop(dialogContext);
+              },
+              child: const Text('Add'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAddLifestyleChangeDialog() {
+    String change = '';
 
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Add Care Instruction'),
+        title: const Text('Add Lifestyle Change'),
+        content: TextField(
+          decoration: const InputDecoration(
+            labelText: 'Lifestyle Change',
+            border: OutlineInputBorder(),
+          ),
+          maxLines: 2,
+          onChanged: (value) => change = value.trim(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              if (change.isEmpty) {
+                return;
+              }
+              setState(() => _lifestyleChanges.add(change));
+              Navigator.pop(dialogContext);
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAddReferralDialog() {
+    String specialist = '';
+    String reason = '';
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Add Referral'),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 decoration: const InputDecoration(
-                  labelText: 'Instruction',
+                  labelText: 'Specialist',
                   border: OutlineInputBorder(),
                 ),
-                maxLines: 2,
-                onChanged: (value) => instruction = value,
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                decoration: const InputDecoration(
-                  labelText: 'Category',
-                  border: OutlineInputBorder(),
-                ),
-                value: category,
-                items: CareCategory.all.map((cat) {
-                  return DropdownMenuItem(value: cat, child: Text(cat));
-                }).toList(),
-                onChanged: (value) => category = value!,
+                onChanged: (value) => specialist = value.trim(),
               ),
               const SizedBox(height: 12),
               TextField(
                 decoration: const InputDecoration(
-                  labelText: 'Frequency (e.g., Daily)',
+                  labelText: 'Reason',
                   border: OutlineInputBorder(),
                 ),
-                onChanged: (value) => frequency = value,
+                maxLines: 2,
+                onChanged: (value) => reason = value.trim(),
               ),
             ],
           ),
@@ -589,41 +702,20 @@ class _CreateTreatmentPlanScreenState extends State<CreateTreatmentPlanScreen> {
           ),
           TextButton(
             onPressed: () {
-              if (instruction.isNotEmpty) {
-                setState(() {
-                  _careInstructions.add(CareInstruction(
-                    instruction: instruction,
-                    category: category,
-                    frequency: frequency.isEmpty ? null : frequency,
-                  ));
-                });
-                Navigator.pop(dialogContext);
+              if (specialist.isEmpty || reason.isEmpty) {
+                return;
               }
+              setState(() {
+                _referrals
+                    .add(Referral(specialist: specialist, reason: reason));
+              });
+              Navigator.pop(dialogContext);
             },
             child: const Text('Add'),
           ),
         ],
       ),
     );
-  }
-
-  IconData _getCategoryIcon(String category) {
-    switch (category) {
-      case CareCategory.diet:
-        return Icons.restaurant;
-      case CareCategory.exercise:
-        return Icons.fitness_center;
-      case CareCategory.lifestyle:
-        return Icons.self_improvement;
-      case CareCategory.monitoring:
-        return Icons.monitor_heart;
-      case CareCategory.medication:
-        return Icons.medication;
-      case CareCategory.followUp:
-        return Icons.event_repeat;
-      default:
-        return Icons.assignment;
-    }
   }
 
   Future<void> _createTreatmentPlan() async {
@@ -631,59 +723,66 @@ class _CreateTreatmentPlanScreenState extends State<CreateTreatmentPlanScreen> {
       return;
     }
 
-    if (_prescriptions.isEmpty && _careInstructions.isEmpty) {
+    if (_prescriptions.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please add at least one prescription or care instruction'),
+          content: Text('Please add at least one prescription'),
           backgroundColor: AppColors.warning,
         ),
       );
       return;
     }
 
-    // Get clinician name
     final clinicianProvider = context.read<ClinicianProvider>();
-    final clinician = clinicianProvider.clinicians.firstWhere((c) => c.id == _selectedClinicianId);
+    final clinician = clinicianProvider.clinicians
+        .firstWhere((c) => c.id == _selectedClinicianId);
 
-    // Create treatment plan
     final treatmentPlan = TreatmentPlanModel(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       patientId: _selectedPatientId!,
       clinicianId: _selectedClinicianId!,
-      diagnosis: _diagnosis,
-      status: _status,
-      startDate: _startDate,
-      endDate: _endDate,
+      diagnosis: Diagnosis(
+        condition: _condition,
+        diagnosedAt: _diagnosedAt,
+        icd10Code: _icd10Code,
+      ),
       prescriptions: _prescriptions,
-      careInstructions: _careInstructions,
-      notes: _notes.isEmpty ? null : _notes,
+      followUps: _followUps,
+      recommendations: Recommendations(
+        lifestyleChanges: _lifestyleChanges,
+        referrals: _referrals,
+      ),
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
       patientName: 'Patient ID: $_selectedPatientId',
-      clinicianName: '${clinician.name.title} ${clinician.name.firstName} ${clinician.name.lastName}',
+      clinicianName:
+          '${clinician.name.title} ${clinician.name.firstName} ${clinician.name.lastName}',
     );
 
-    // Create treatment plan
     final provider = context.read<TreatmentPlanProvider>();
     final success = await provider.addTreatmentPlan(treatmentPlan);
 
-    if (mounted) {
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Treatment plan created successfully!'),
-            backgroundColor: AppColors.success,
-          ),
-        );
-        Navigator.pop(context); // Go back to list
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(provider.errorMessage ?? 'Failed to create treatment plan'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
+    if (!mounted) {
+      return;
     }
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Treatment plan created successfully!'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+      Navigator.pop(context);
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content:
+            Text(provider.errorMessage ?? 'Failed to create treatment plan'),
+        backgroundColor: AppColors.error,
+      ),
+    );
   }
 }

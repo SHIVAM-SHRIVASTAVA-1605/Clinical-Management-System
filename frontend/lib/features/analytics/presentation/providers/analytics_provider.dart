@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/features/analytics/data/models/analytics_model.dart';
 import 'package:frontend/features/analytics/data/services/analytics_service.dart';
+import 'dart:typed_data';
 
 // Analytics provider for state management with ClinicalAnalytics model
 class AnalyticsProvider extends ChangeNotifier {
@@ -131,6 +132,28 @@ class AnalyticsProvider extends ChangeNotifier {
     }
   }
 
+  // Export analytics as CSV bytes for download
+  Future<Uint8List?> exportAnalyticsAsCSVBytes({
+    String? metricType,
+    AnalyticsFilters? filters,
+  }) async {
+    _setLoading(true);
+    _clearError();
+
+    try {
+      final bytes = await _analyticsService.exportAnalyticsAsCSVBytes(
+        metricType: metricType,
+        filters: filters,
+      );
+      _setLoading(false);
+      return bytes;
+    } catch (e) {
+      _setError('Failed to export analytics as CSV: ${e.toString()}');
+      _setLoading(false);
+      return null;
+    }
+  }
+
   // Export analytics as PDF
   Future<String?> exportAnalyticsAsPDF({
     String? metricType,
@@ -146,6 +169,28 @@ class AnalyticsProvider extends ChangeNotifier {
       );
       _setLoading(false);
       return pdfPath;
+    } catch (e) {
+      _setError('Failed to export analytics as PDF: ${e.toString()}');
+      _setLoading(false);
+      return null;
+    }
+  }
+
+  // Export analytics as PDF bytes for download
+  Future<Uint8List?> exportAnalyticsAsPDFBytes({
+    String? metricType,
+    AnalyticsFilters? filters,
+  }) async {
+    _setLoading(true);
+    _clearError();
+
+    try {
+      final bytes = await _analyticsService.exportAnalyticsAsPDFBytes(
+        metricType: metricType,
+        filters: filters,
+      );
+      _setLoading(false);
+      return bytes;
     } catch (e) {
       _setError('Failed to export analytics as PDF: ${e.toString()}');
       _setLoading(false);

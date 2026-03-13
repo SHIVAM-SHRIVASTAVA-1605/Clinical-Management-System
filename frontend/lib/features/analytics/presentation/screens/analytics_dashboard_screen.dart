@@ -6,6 +6,11 @@ import 'package:frontend/features/analytics/presentation/providers/analytics_pro
 import 'package:provider/provider.dart';
 import 'package:frontend/core/widgets/error_widget.dart' as custom;
 import 'package:intl/intl.dart';
+import 'package:file_saver/file_saver.dart';
+import 'dart:typed_data';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 // Clinical Analytics Dashboard Screen
 class AnalyticsDashboardScreen extends StatefulWidget {
@@ -33,6 +38,26 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
       appBar: AppBar(
         title: const Text('Clinical Analytics'),
         actions: [
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.file_download_outlined),
+            onSelected: (value) {
+              if (value == 'csv') {
+                _exportAnalytics(context, format: 'csv');
+              } else if (value == 'pdf') {
+                _exportAnalytics(context, format: 'pdf');
+              }
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem<String>(
+                value: 'csv',
+                child: Text('Export CSV'),
+              ),
+              PopupMenuItem<String>(
+                value: 'pdf',
+                child: Text('Export PDF'),
+              ),
+            ],
+          ),
           IconButton(
             icon: const Icon(Icons.filter_list),
             onPressed: () => _showFilterDialog(context),
@@ -178,7 +203,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                           ),
                         ),
                         Text(
-                          'ID: ${record.id.substring(0, record.id.length > 12 ? 12 : record.id.length)}...',
+                          'ID: ${_shortId(record.id, 12)}',
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey.shade600,
@@ -256,7 +281,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                     if (record.data.filters.clinicianId != null)
                       _buildFilterChip(
                         'Clinician',
-                        record.data.filters.clinicianId!.substring(0, 8),
+                        _shortId(record.data.filters.clinicianId!, 8),
                         Icons.person,
                       ),
                     if (record.data.filters.location != null)
@@ -400,7 +425,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
               ),
               const Divider(),
               _buildDetailRow('Generated At', dateFormat.format(record.generatedAt)),
-              _buildDetailRow('Updated At', record.updatedAt != null ? dateFormat.format(record.updatedAt!) : 'N/A'),
+              _buildDetailRow('Updated At', dateFormat.format(record.updatedAt)),
               if (record.data.filters.clinicianId != null ||
                   record.data.filters.location != null ||
                   record.data.filters.patientAgeGroup != null) ...[
@@ -511,5 +536,107 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
         ),
       ),
     );
+  }
+
+  String _shortId(String value, int length) {
+    if (value.isEmpty) return value;
+    if (value.length <= length) return value;
+    return '${value.substring(0, length)}...';
+  }
+
+  Future<void> _exportAnalytics(BuildContext context, {required String format}) async {
+    final provider = context.read<AnalyticsProvider>();
+    final filters = provider.analyticsFilters;
+    final metricType = _selectedMetricType;
+
+    Uint8List? bytes;
+    if (format == 'pdf') {
+      bytes = await provider.exportAnalyticsAsPDFBytes(
+        metricType: metricType,
+        filters: filters,
+      );
+    } else {
+      bytes = await provider.exportAnalyticsAsCSVBytes(
+        metricType: metricType,
+        filters: filters,
+      );
+    }
+
+    if (!context.mounted) return;
+
+    if (bytes == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Export failed. Please try again.')),
+      );
+      return;
+    }
+
+    try {
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final ext = format == 'pdf' ? 'pdf' : 'csv';
+      final mime = format == 'pdf' ? MimeType.pdf : MimeType.csv;
+      final customMime = format == 'pdf' ? 'application/pdf' : 'text/csv';
+      final fileName = 'clinical_analytics_$timestamp';
+
+      String savedPath;
+      try {
+        savedPath = await FileSaver.instance.saveFile(
+          name: fileName,
+          bytes: bytes,
+          ext: ext,
+          mimeType: mime,
+          customMimeType: customMime,
+        );
+      } on MissingPluginException {
+        savedPath = await _saveFileFallback(bytes, '$fileName.$ext');
+      }
+
+      if (!context.mounted) return;
+
+        final message = (savedPath.toString().isNotEmpty)
+          ? '${format.toUpperCase()} saved: $savedPath'
+          : '${format.toUpperCase()} export created. Check your Downloads or Files app.';
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Export failed: ${e.toString()}')),
+      );
+    }
+  }
+
+  Future<String> _saveFileFallback(Uint8List bytes, String fileName) async {
+    if (kIsWeb) {
+      throw Exception('Web fallback is not supported in this build.');
+    }
+
+    final home = Platform.environment['HOME'];
+    final candidates = <String>[
+      if (home != null && home.isNotEmpty) '$home/Downloads/$fileName',
+      if (home != null && home.isNotEmpty) '$home/$fileName',
+      './$fileName',
+      '${Directory.systemTemp.path}/$fileName',
+    ];
+
+    final errors = <String>[];
+
+    for (final path in candidates) {
+      try {
+        final file = File(path);
+        await file.parent.create(recursive: true);
+        if (!await file.exists()) {
+          await file.create();
+        }
+        await file.writeAsBytes(bytes, flush: true);
+        return file.path;
+      } catch (e) {
+        errors.add('$path -> $e');
+      }
+    }
+
+    throw Exception('Unable to save file on this device. Tried: ${errors.join(' | ')}');
   }
 }

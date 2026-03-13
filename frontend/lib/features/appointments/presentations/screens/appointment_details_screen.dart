@@ -16,7 +16,8 @@ class AppointmentDetailsScreen extends StatefulWidget {
   });
 
   @override
-  State<AppointmentDetailsScreen> createState() => _AppointmentDetailsScreenState();
+  State<AppointmentDetailsScreen> createState() =>
+      _AppointmentDetailsScreenState();
 }
 
 class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
@@ -25,7 +26,9 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
     super.initState();
     // Fetch appointment details
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AppointmentProvider>().fetchAppointmentById(widget.appointmentId);
+      context
+          .read<AppointmentProvider>()
+          .fetchAppointmentById(widget.appointmentId);
     });
   }
 
@@ -97,7 +100,8 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
           if (provider.errorMessage != null) {
             return custom.CustomErrorWidget(
               message: provider.errorMessage!,
-              onRetry: () => provider.fetchAppointmentById(widget.appointmentId),
+              onRetry: () =>
+                  provider.fetchAppointmentById(widget.appointmentId),
             );
           }
 
@@ -117,7 +121,7 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
                 _buildParticipantsSection(appointment),
                 const SizedBox(height: 16),
                 _buildBillingSection(appointment),
-                if (appointment.notes != null) ...[
+                if (appointment.notes.isNotEmpty) ...[
                   const SizedBox(height: 16),
                   _buildNotesSection(appointment),
                 ],
@@ -193,7 +197,8 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
       children: [
         _buildInfoRow(Icons.calendar_today, 'Date', appointment.formattedDate),
         _buildInfoRow(Icons.schedule, 'Time', appointment.formattedTime),
-        _buildInfoRow(Icons.timelapse, 'Duration', '${appointment.duration} minutes'),
+        _buildInfoRow(
+            Icons.timelapse, 'Duration', '${appointment.duration} minutes'),
         _buildInfoRow(Icons.location_on, 'Location', appointment.location),
       ],
     );
@@ -273,21 +278,6 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
 
   Widget _buildBillingSection(AppointmentModel appointment) {
     final billing = appointment.billing;
-    
-    if (billing == null) {
-      return _buildCard(
-        title: 'Billing Information',
-        icon: Icons.payment,
-        children: [
-          const Center(
-            child: Text(
-              'No billing information available',
-              style: TextStyle(color: AppColors.textSecondary),
-            ),
-          ),
-        ],
-      );
-    }
 
     return _buildCard(
       title: 'Billing Information',
@@ -333,7 +323,8 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
                     style: TextStyle(fontSize: 14),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                     decoration: BoxDecoration(
                       color: _getBillingStatusColor(billing.status),
                       borderRadius: BorderRadius.circular(12),
@@ -349,17 +340,18 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
                   ),
                 ],
               ),
-              if (billing.insuranceDetails != null) ...[
+              if (billing.insuranceDetails.provider != null ||
+                  billing.insuranceDetails.policyNumber != null) ...[
                 const Divider(height: 24),
                 _buildInfoRow(
                   Icons.shield,
                   'Insurance Provider',
-                  billing.insuranceDetails!.provider ?? 'N/A',
+                  billing.insuranceDetails.provider ?? 'N/A',
                 ),
                 _buildInfoRow(
                   Icons.confirmation_number,
                   'Policy Number',
-                  billing.insuranceDetails!.policyNumber ?? 'N/A',
+                  billing.insuranceDetails.policyNumber ?? 'N/A',
                 ),
               ],
             ],
@@ -382,7 +374,7 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
-            appointment.notes!,
+            appointment.notes,
             style: const TextStyle(fontSize: 14),
           ),
         ),
@@ -543,7 +535,7 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
     if (mounted) {
       // Refresh details
       provider.fetchAppointmentById(widget.appointmentId);
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(message),
@@ -555,37 +547,43 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
 
   Future<bool> _showCancelConfirmation() async {
     return await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Cancel Appointment'),
-        content: const Text('Are you sure you want to cancel this appointment?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('No'),
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Cancel Appointment'),
+            content:
+                const Text('Are you sure you want to cancel this appointment?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('No'),
+              ),
+              TextButton(
+                onPressed: () async {
+                  Navigator.pop(dialogContext, true);
+                  final provider = context.read<AppointmentProvider>();
+                  final success =
+                      await provider.cancelAppointment(widget.appointmentId);
+
+                  if (mounted) {
+                    provider.fetchAppointmentById(widget.appointmentId);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(success
+                            ? 'Appointment cancelled'
+                            : 'Failed to cancel'),
+                        backgroundColor:
+                            success ? AppColors.success : AppColors.error,
+                      ),
+                    );
+                  }
+                },
+                style: TextButton.styleFrom(foregroundColor: AppColors.error),
+                child: const Text('Yes, Cancel'),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(dialogContext, true);
-              final provider = context.read<AppointmentProvider>();
-              final success = await provider.cancelAppointment(widget.appointmentId);
-              
-              if (mounted) {
-                provider.fetchAppointmentById(widget.appointmentId);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(success ? 'Appointment cancelled' : 'Failed to cancel'),
-                    backgroundColor: success ? AppColors.success : AppColors.error,
-                  ),
-                );
-              }
-            },
-            style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: const Text('Yes, Cancel'),
-          ),
-        ],
-      ),
-    ) ?? false;
+        ) ??
+        false;
   }
 
   void _showDeleteConfirmation() {
@@ -593,7 +591,8 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Delete Appointment'),
-        content: const Text('Are you sure you want to delete this appointment? This action cannot be undone.'),
+        content: const Text(
+            'Are you sure you want to delete this appointment? This action cannot be undone.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
@@ -602,29 +601,30 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
           TextButton(
             onPressed: () async {
               Navigator.pop(dialogContext);
-              
+
               if (!mounted) return;
               showDialog(
                 context: context,
                 barrierDismissible: false,
-                builder: (_) => const Center(child: CircularProgressIndicator()),
+                builder: (_) =>
+                    const Center(child: CircularProgressIndicator()),
               );
-              
+
               final provider = context.read<AppointmentProvider>();
-              final success = await provider.deleteAppointment(widget.appointmentId);
-              
+              final success =
+                  await provider.deleteAppointment(widget.appointmentId);
+
               if (mounted) {
                 Navigator.pop(context); // Close loading
                 Navigator.pop(context); // Go back to list
-                
+
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text(
-                      success 
-                        ? 'Appointment deleted successfully' 
-                        : provider.errorMessage ?? 'Failed to delete'
-                    ),
-                    backgroundColor: success ? AppColors.success : AppColors.error,
+                    content: Text(success
+                        ? 'Appointment deleted successfully'
+                        : provider.errorMessage ?? 'Failed to delete'),
+                    backgroundColor:
+                        success ? AppColors.success : AppColors.error,
                   ),
                 );
               }

@@ -4,6 +4,7 @@ import 'package:frontend/core/routes/app_routes.dart';
 import 'package:frontend/features/auth/presentations/providers/auth_provider.dart';
 import 'package:frontend/features/appointments/presentations/provider/appointment_provider.dart';
 import 'package:frontend/features/treatment_plans/presentations/providers/treatment_plan_provider.dart';
+import 'package:frontend/features/treatment_plans/data/models/treatment_plan_model.dart';
 import 'package:frontend/features/dashboard/presentation/widgets/app_drawer.dart';
 import 'package:frontend/features/dashboard/presentation/widgets/stats_card.dart';
 import 'package:provider/provider.dart';
@@ -13,7 +14,8 @@ class ClinicianDashboardScreen extends StatefulWidget {
   const ClinicianDashboardScreen({super.key});
 
   @override
-  State<ClinicianDashboardScreen> createState() => _ClinicianDashboardScreenState();
+  State<ClinicianDashboardScreen> createState() =>
+      _ClinicianDashboardScreenState();
 }
 
 class _ClinicianDashboardScreenState extends State<ClinicianDashboardScreen> {
@@ -45,26 +47,26 @@ class _ClinicianDashboardScreenState extends State<ClinicianDashboardScreen> {
 
     // Filter data by clinician ID
     final clinicianId = user?.id ?? '';
-    
+
     // Get today's date for filtering
     final today = DateTime.now();
-    
+
     // Filter appointments for this clinician and today
     final allAppointments = appointmentProvider.appointments
         .where((apt) => apt.clinicianId == clinicianId)
         .toList();
-    
+
     final todayAppointments = allAppointments.where((apt) {
       return apt.scheduledAt.year == today.year &&
-             apt.scheduledAt.month == today.month &&
-             apt.scheduledAt.day == today.day;
+          apt.scheduledAt.month == today.month &&
+          apt.scheduledAt.day == today.day;
     }).toList();
 
     final uniquePatientCount = allAppointments
-      .map((a) => a.patientId)
-      .where((id) => id.isNotEmpty)
-      .toSet()
-      .length;
+        .map((a) => a.patientId)
+        .where((id) => id.isNotEmpty)
+        .toSet()
+        .length;
 
     // Filter treatment plans created by this clinician
     final myTreatmentPlans = treatmentPlanProvider.treatmentPlans
@@ -72,7 +74,7 @@ class _ClinicianDashboardScreenState extends State<ClinicianDashboardScreen> {
         .toList();
 
     final activeTreatments = myTreatmentPlans
-        .where((plan) => plan.status.toString().contains('active'))
+        .where((plan) => plan.hasFollowUpStatus(FollowUpStatus.pending))
         .length;
 
     return Scaffold(
@@ -200,8 +202,10 @@ class _ClinicianDashboardScreenState extends State<ClinicianDashboardScreen> {
                     child: _buildAppointmentCard(
                       context,
                       appointmentId: appointment.id,
-                      patientName: appointment.patientName ?? 'Patient ID: ${appointment.patientId}',
-                      time: '${appointment.scheduledAt.hour.toString().padLeft(2, '0')}:${appointment.scheduledAt.minute.toString().padLeft(2, '0')}',
+                      patientName: appointment.patientName ??
+                          'Patient ID: ${appointment.patientId}',
+                      time:
+                          '${appointment.scheduledAt.hour.toString().padLeft(2, '0')}:${appointment.scheduledAt.minute.toString().padLeft(2, '0')}',
                       type: appointment.appointmentType,
                       status: appointment.status,
                     ),

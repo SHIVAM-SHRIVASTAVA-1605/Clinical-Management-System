@@ -3,6 +3,7 @@ import 'package:frontend/features/auth/presentations/providers/auth_provider.dar
 import 'package:frontend/features/clinicians/presentation/providers/clinician_provider.dart';
 import 'package:frontend/features/appointments/presentations/provider/appointment_provider.dart';
 import 'package:frontend/features/treatment_plans/presentations/providers/treatment_plan_provider.dart';
+import 'package:frontend/features/treatment_plans/data/models/treatment_plan_model.dart';
 import 'package:provider/provider.dart';
 import 'package:frontend/core/constants/app_colors.dart';
 import 'package:frontend/core/routes/app_routes.dart';
@@ -40,18 +41,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     // Calculate real-time counts
     final totalClinicians = clinicianProvider.clinicians.length;
     final totalPatients = appointmentProvider.appointments
-      .map((a) => a.patientId)
-      .where((id) => id.isNotEmpty)
-      .toSet()
-      .length;
+        .map((a) => a.patientId)
+        .where((id) => id.isNotEmpty)
+        .toSet()
+        .length;
     final todayAppointments = appointmentProvider.appointments.where((apt) {
       final today = DateTime.now();
       return apt.scheduledAt.year == today.year &&
-             apt.scheduledAt.month == today.month &&
-             apt.scheduledAt.day == today.day;
+          apt.scheduledAt.month == today.month &&
+          apt.scheduledAt.day == today.day;
     }).length;
     final activeTreatments = treatmentPlanProvider.treatmentPlans
-        .where((plan) => plan.status.toString().contains('active'))
+        .where((plan) => plan.hasFollowUpStatus(FollowUpStatus.pending))
         .length;
 
     return Scaffold(

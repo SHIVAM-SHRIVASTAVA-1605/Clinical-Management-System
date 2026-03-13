@@ -4,14 +4,14 @@ class ClinicalAnalyticsModel {
   final String metricType;
   final AnalyticsDataRecord data;
   final DateTime generatedAt;
-  final DateTime? updatedAt;
+  final DateTime updatedAt;
 
   ClinicalAnalyticsModel({
     required this.id,
     required this.metricType,
     required this.data,
     required this.generatedAt,
-    this.updatedAt,
+    required this.updatedAt,
   });
 
   factory ClinicalAnalyticsModel.fromJson(Map<String, dynamic> json) {
@@ -24,7 +24,7 @@ class ClinicalAnalyticsModel {
           : DateTime.now(),
       updatedAt: json['updatedAt'] != null
           ? DateTime.parse(json['updatedAt'])
-          : null,
+          : DateTime.now(),
     );
   }
 
@@ -34,7 +34,7 @@ class ClinicalAnalyticsModel {
       'metricType': metricType,
       'data': data.toJson(),
       'generatedAt': generatedAt.toIso8601String(),
-      'updatedAt': updatedAt?.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
     };
   }
 }

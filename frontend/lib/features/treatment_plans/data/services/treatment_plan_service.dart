@@ -1,401 +1,309 @@
+import 'package:frontend/core/constants/api_constants.dart';
 import 'package:frontend/features/treatment_plans/data/models/treatment_plan_model.dart';
 
 // Treatment Plan service for API calls
-// TODO: Implement actual API calls when backend is ready
-
+// TODO: Replace mock flow with real API integration.
 class TreatmentPlanService {
-  
-  static final TreatmentPlanService _instance = TreatmentPlanService._internal();
+  static final TreatmentPlanService _instance =
+      TreatmentPlanService._internal();
   factory TreatmentPlanService() => _instance;
   TreatmentPlanService._internal();
 
-  // Mock data storage
   final List<TreatmentPlanModel> _mockTreatmentPlans = [];
 
-  // Initialize with mock data
   void _initMockData() {
+    if (_mockTreatmentPlans.isNotEmpty) {
+      return;
+    }
+
     final now = DateTime.now();
-    
+
     _mockTreatmentPlans.addAll([
-      // Active treatment plan for John Smith
       _createMockTreatmentPlan(
         id: '1',
         patientId: '1',
-        patientName: 'John Smith',
+        patientName: 'Patient ID: 1',
         clinicianId: '1',
         clinicianName: 'Dr. Emily Brown',
-        diagnosis: 'Hypertension',
-        status: TreatmentPlanStatus.active,
-        startDate: now.subtract(const Duration(days: 7)),
+        diagnosis: Diagnosis(
+          condition: 'Hypertension',
+          diagnosedAt: now.subtract(const Duration(days: 7)),
+          icd10Code: 'I10',
+        ),
         prescriptions: [
           Prescription(
-            medicationName: 'Lisinopril',
+            medication: 'Lisinopril',
             dosage: '10mg',
-            frequency: PrescriptionFrequency.onceDailyl,
-            duration: '30 days',
+            frequency: PrescriptionFrequency.onceDaily,
+            startDate: now.subtract(const Duration(days: 7)),
+            endDate: now.add(const Duration(days: 23)),
             instructions: 'Take in the morning with food',
           ),
           Prescription(
-            medicationName: 'Aspirin',
+            medication: 'Aspirin',
             dosage: '81mg',
-            frequency: PrescriptionFrequency.onceDailyl,
-            duration: '30 days',
-            instructions: 'Take with water',
+            frequency: PrescriptionFrequency.onceDaily,
+            startDate: now.subtract(const Duration(days: 7)),
+            endDate: null,
+            instructions: 'Take with water after breakfast',
           ),
         ],
-        careInstructions: [
-          CareInstruction(
-            instruction: 'Low sodium diet (less than 2000mg per day)',
-            category: CareCategory.diet,
-            frequency: 'Daily',
-          ),
-          CareInstruction(
-            instruction: 'Monitor blood pressure twice daily',
-            category: CareCategory.monitoring,
-            frequency: 'Twice daily',
-          ),
-          CareInstruction(
-            instruction: '30 minutes of moderate exercise',
-            category: CareCategory.exercise,
-            frequency: '5 days per week',
+        followUps: [
+          FollowUp(
+            scheduledDate: now.add(const Duration(days: 10)),
+            purpose: 'Monitor medication response',
+            status: FollowUpStatus.pending,
           ),
         ],
-        notes: 'Patient showing good response to treatment. Continue monitoring BP.',
+        recommendations: Recommendations(
+          lifestyleChanges: [
+            'Reduce sodium intake below 2000mg/day',
+            'Walk for 30 minutes at least 5 days/week',
+          ],
+          referrals: const [],
+        ),
       ),
-
-      // Active treatment plan for Sarah Johnson
       _createMockTreatmentPlan(
         id: '2',
         patientId: '2',
-        patientName: 'Sarah Johnson',
+        patientName: 'Patient ID: 2',
         clinicianId: '1',
         clinicianName: 'Dr. Emily Brown',
-        diagnosis: 'Type 2 Diabetes',
-        status: TreatmentPlanStatus.active,
-        startDate: now.subtract(const Duration(days: 14)),
+        diagnosis: Diagnosis(
+          condition: 'Type 2 Diabetes',
+          diagnosedAt: now.subtract(const Duration(days: 14)),
+          icd10Code: 'E11.9',
+        ),
         prescriptions: [
           Prescription(
-            medicationName: 'Metformin',
+            medication: 'Metformin',
             dosage: '500mg',
             frequency: PrescriptionFrequency.twiceDaily,
-            duration: '90 days',
-            instructions: 'Take with meals',
+            startDate: now.subtract(const Duration(days: 14)),
+            endDate: now.add(const Duration(days: 76)),
+            instructions: 'Take with breakfast and dinner',
           ),
         ],
-        careInstructions: [
-          CareInstruction(
-            instruction: 'Carbohydrate counting - 45-60g per meal',
-            category: CareCategory.diet,
-            frequency: 'Daily',
-          ),
-          CareInstruction(
-            instruction: 'Check blood sugar levels',
-            category: CareCategory.monitoring,
-            frequency: 'Twice daily (fasting & post-meal)',
-          ),
-          CareInstruction(
-            instruction: 'Aerobic exercise for 30 minutes',
-            category: CareCategory.exercise,
-            frequency: 'Daily',
+        followUps: [
+          FollowUp(
+            scheduledDate: now.add(const Duration(days: 7)),
+            purpose: 'Review fasting and post-meal sugar logs',
+            status: FollowUpStatus.pending,
           ),
         ],
-        notes: 'Patient adapting well to lifestyle changes. Blood sugar levels improving.',
+        recommendations: Recommendations(
+          lifestyleChanges: [
+            'Carb count with 45-60g per meal',
+            'Check blood sugar twice daily',
+          ],
+          referrals: [
+            Referral(
+              specialist: 'Dietitian',
+              reason: 'Medical nutrition therapy planning',
+            ),
+          ],
+        ),
       ),
-
-      // Active treatment plan for Mike Wilson
       _createMockTreatmentPlan(
         id: '3',
         patientId: '3',
-        patientName: 'Mike Wilson',
+        patientName: 'Patient ID: 3',
         clinicianId: '2',
         clinicianName: 'Dr. Michael Johnson',
-        diagnosis: 'Chronic Back Pain',
-        status: TreatmentPlanStatus.active,
-        startDate: now.subtract(const Duration(days: 21)),
+        diagnosis: Diagnosis(
+          condition: 'Chronic Back Pain',
+          diagnosedAt: now.subtract(const Duration(days: 21)),
+          icd10Code: 'M54.50',
+        ),
         prescriptions: [
           Prescription(
-            medicationName: 'Ibuprofen',
+            medication: 'Ibuprofen',
             dosage: '400mg',
-            frequency: PrescriptionFrequency.threeTimes,
-            duration: '14 days',
-            instructions: 'Take with food',
-          ),
-          Prescription(
-            medicationName: 'Cyclobenzaprine',
-            dosage: '5mg',
-            frequency: 'Once daily at bedtime',
-            duration: '14 days',
-            instructions: 'May cause drowsiness',
+            frequency: PrescriptionFrequency.threeTimesDaily,
+            startDate: now.subtract(const Duration(days: 21)),
+            endDate: now.subtract(const Duration(days: 7)),
+            instructions: 'Take with meals to reduce gastric irritation',
           ),
         ],
-        careInstructions: [
-          CareInstruction(
-            instruction: 'Physical therapy exercises for lower back',
-            category: CareCategory.exercise,
-            frequency: 'Twice daily (morning & evening)',
+        followUps: [
+          FollowUp(
+            scheduledDate: now.subtract(const Duration(days: 2)),
+            purpose: 'Assess pain score and mobility',
+            status: FollowUpStatus.completed,
           ),
-          CareInstruction(
-            instruction: 'Apply heat/ice therapy',
-            category: CareCategory.lifestyle,
-            frequency: 'As needed for pain relief',
-          ),
-          CareInstruction(
-            instruction: 'Maintain proper posture while sitting',
-            category: CareCategory.lifestyle,
-            frequency: 'Continuously',
+          FollowUp(
+            scheduledDate: now.add(const Duration(days: 14)),
+            purpose: 'Evaluate therapy progression',
+            status: FollowUpStatus.pending,
           ),
         ],
-        notes: 'Patient scheduled for physical therapy sessions. Avoid heavy lifting.',
-      ),
-
-      // Completed treatment plan
-      _createMockTreatmentPlan(
-        id: '4',
-        patientId: '4',
-        patientName: 'Emma Davis',
-        clinicianId: '3',
-        clinicianName: 'Nurse Sarah Davis',
-        diagnosis: 'Upper Respiratory Infection',
-        status: TreatmentPlanStatus.completed,
-        startDate: now.subtract(const Duration(days: 21)),
-        endDate: now.subtract(const Duration(days: 7)),
-        prescriptions: [
-          Prescription(
-            medicationName: 'Amoxicillin',
-            dosage: '500mg',
-            frequency: PrescriptionFrequency.threeTimes,
-            duration: '10 days',
-            instructions: 'Complete full course',
-          ),
-        ],
-        careInstructions: [
-          CareInstruction(
-            instruction: 'Get plenty of rest',
-            category: CareCategory.lifestyle,
-            frequency: 'Daily',
-          ),
-          CareInstruction(
-            instruction: 'Stay hydrated - drink 8 glasses of water',
-            category: CareCategory.diet,
-            frequency: 'Daily',
-          ),
-        ],
-        notes: 'Treatment completed successfully. Patient fully recovered.',
-      ),
-
-      // On-Hold treatment plan
-      _createMockTreatmentPlan(
-        id: '5',
-        patientId: '1',
-        patientName: 'John Smith',
-        clinicianId: '2',
-        clinicianName: 'Dr. Michael Johnson',
-        diagnosis: 'Anxiety Disorder',
-        status: TreatmentPlanStatus.onHold,
-        startDate: now.subtract(const Duration(days: 60)),
-        prescriptions: [
-          Prescription(
-            medicationName: 'Sertraline',
-            dosage: '50mg',
-            frequency: PrescriptionFrequency.onceDailyl,
-            duration: 'Ongoing',
-            instructions: 'Take in the morning',
-          ),
-        ],
-        careInstructions: [
-          CareInstruction(
-            instruction: 'Cognitive Behavioral Therapy sessions',
-            category: CareCategory.followUp,
-            frequency: 'Weekly',
-          ),
-          CareInstruction(
-            instruction: 'Practice relaxation techniques',
-            category: CareCategory.lifestyle,
-            frequency: 'Daily',
-          ),
-        ],
-        notes: 'Treatment on hold pending psychiatric evaluation.',
+        recommendations: Recommendations(
+          lifestyleChanges: [
+            'Practice posture correction exercises daily',
+            'Avoid lifting objects above 8kg for 6 weeks',
+          ],
+          referrals: [
+            Referral(
+              specialist: 'Physical Therapist',
+              reason: 'Structured lower back strengthening program',
+            ),
+          ],
+        ),
       ),
     ]);
   }
 
-  // Get all treatment plans
   Future<List<TreatmentPlanModel>> getAllTreatmentPlans() async {
     await Future.delayed(const Duration(milliseconds: 500));
-    
-    if (_mockTreatmentPlans.isEmpty) {
-      _initMockData();
-    }
-    
-    return _mockTreatmentPlans;
+    _initMockData();
+    return List<TreatmentPlanModel>.from(_mockTreatmentPlans);
   }
 
-  // Get treatment plan by ID
   Future<TreatmentPlanModel?> getTreatmentPlanById(String id) async {
     await Future.delayed(const Duration(milliseconds: 300));
-    
-    if (_mockTreatmentPlans.isEmpty) {
-      _initMockData();
-    }
-    
+    _initMockData();
+
     try {
       return _mockTreatmentPlans.firstWhere((t) => t.id == id);
-    } catch (e) {
+    } catch (_) {
       return null;
     }
   }
 
-  // Get treatment plans by patient ID
-  Future<List<TreatmentPlanModel>> getTreatmentPlansByPatientId(String patientId) async {
+  Future<List<TreatmentPlanModel>> getTreatmentPlansByPatientId(
+    String patientId,
+  ) async {
+    final endpoint = ApiConstants.treatmentPlansByPatient(patientId);
     await Future.delayed(const Duration(milliseconds: 400));
-    
-    if (_mockTreatmentPlans.isEmpty) {
-      _initMockData();
+    _initMockData();
+
+    if (endpoint.isEmpty) {
+      return <TreatmentPlanModel>[];
     }
-    
+
     return _mockTreatmentPlans.where((t) => t.patientId == patientId).toList();
   }
 
-  // Get treatment plans by clinician ID
-  Future<List<TreatmentPlanModel>> getTreatmentPlansByClinicianId(String clinicianId) async {
+  Future<List<TreatmentPlanModel>> getTreatmentPlansByClinicianId(
+    String clinicianId,
+  ) async {
     await Future.delayed(const Duration(milliseconds: 400));
-    
-    if (_mockTreatmentPlans.isEmpty) {
-      _initMockData();
-    }
-    
-    return _mockTreatmentPlans.where((t) => t.clinicianId == clinicianId).toList();
+    _initMockData();
+    return _mockTreatmentPlans
+        .where((t) => t.clinicianId == clinicianId)
+        .toList();
   }
 
-  // Get active treatment plans
   Future<List<TreatmentPlanModel>> getActiveTreatmentPlans() async {
     await Future.delayed(const Duration(milliseconds: 400));
-    
-    if (_mockTreatmentPlans.isEmpty) {
-      _initMockData();
-    }
-    
-    return _mockTreatmentPlans.where((t) => t.isActive).toList();
+    _initMockData();
+    return _mockTreatmentPlans
+        .where((t) => t.hasFollowUpStatus(FollowUpStatus.pending))
+        .toList();
   }
 
-  // Get treatment plans by status
-  Future<List<TreatmentPlanModel>> getTreatmentPlansByStatus(String status) async {
+  Future<List<TreatmentPlanModel>> getTreatmentPlansByStatus(
+      String status) async {
     await Future.delayed(const Duration(milliseconds: 400));
-    
-    if (_mockTreatmentPlans.isEmpty) {
-      _initMockData();
-    }
-    
-    return _mockTreatmentPlans.where((t) => t.status == status).toList();
+    _initMockData();
+    return _mockTreatmentPlans
+        .where((t) => t.hasFollowUpStatus(status))
+        .toList();
   }
 
-  // Add new treatment plan
-  Future<Map<String, dynamic>> addTreatmentPlan(TreatmentPlanModel treatmentPlan) async {
+  Future<Map<String, dynamic>> addTreatmentPlan(
+    TreatmentPlanModel treatmentPlan,
+  ) async {
+    final endpoint = ApiConstants.treatmentPlans;
     await Future.delayed(const Duration(milliseconds: 800));
-    
+
     _mockTreatmentPlans.add(treatmentPlan);
-    
+
     return {
       'success': true,
       'message': 'Treatment plan created successfully',
+      'endpoint': endpoint,
       'data': treatmentPlan.toJson(),
     };
   }
 
-  // Update treatment plan
-  Future<Map<String, dynamic>> updateTreatmentPlan(String id, TreatmentPlanModel treatmentPlan) async {
+  Future<Map<String, dynamic>> updateTreatmentPlan(
+    String id,
+    TreatmentPlanModel treatmentPlan,
+  ) async {
+    final endpoint = ApiConstants.treatmentPlanById(id);
     await Future.delayed(const Duration(milliseconds: 800));
-    
+
     final index = _mockTreatmentPlans.indexWhere((t) => t.id == id);
-    
-    if (index != -1) {
-      _mockTreatmentPlans[index] = treatmentPlan;
+
+    if (index == -1) {
       return {
-        'success': true,
-        'message': 'Treatment plan updated successfully',
-        'data': treatmentPlan.toJson(),
+        'success': false,
+        'message': 'Treatment plan not found',
       };
     }
-    
+
+    _mockTreatmentPlans[index] = treatmentPlan;
     return {
-      'success': false,
-      'message': 'Treatment plan not found',
+      'success': true,
+      'message': 'Treatment plan updated successfully',
+      'endpoint': endpoint,
+      'data': treatmentPlan.toJson(),
     };
   }
 
-  // Update treatment plan status
-  Future<Map<String, dynamic>> updateTreatmentPlanStatus(String id, String status) async {
-    await Future.delayed(const Duration(milliseconds: 500));
-    
-    final index = _mockTreatmentPlans.indexWhere((t) => t.id == id);
-    
-    if (index != -1) {
-      _mockTreatmentPlans[index] = _mockTreatmentPlans[index].copyWith(
-        status: status,
-        updatedAt: DateTime.now(),
-        endDate: status == TreatmentPlanStatus.completed ? DateTime.now() : null,
-      );
-      return {
-        'success': true,
-        'message': 'Treatment plan status updated',
-        'data': _mockTreatmentPlans[index].toJson(),
-      };
-    }
-    
-    return {
-      'success': false,
-      'message': 'Treatment plan not found',
-    };
-  }
-
-  // Delete treatment plan
   Future<Map<String, dynamic>> deleteTreatmentPlan(String id) async {
     await Future.delayed(const Duration(milliseconds: 500));
-    
+
     final initialLength = _mockTreatmentPlans.length;
     _mockTreatmentPlans.removeWhere((t) => t.id == id);
-    final removed = initialLength != _mockTreatmentPlans.length;
-    
-    if (removed) {
+
+    if (initialLength == _mockTreatmentPlans.length) {
       return {
-        'success': true,
-        'message': 'Treatment plan deleted successfully',
+        'success': false,
+        'message': 'Treatment plan not found',
       };
     }
-    
+
     return {
-      'success': false,
-      'message': 'Treatment plan not found',
+      'success': true,
+      'message': 'Treatment plan deleted successfully',
     };
   }
 
-  // Helper to create mock treatment plan
+  // Endpoint-aligned alias: POST /treatment-plans
+  Future<Map<String, dynamic>> createTreatmentPlan(
+    TreatmentPlanModel treatmentPlan,
+  ) {
+    return addTreatmentPlan(treatmentPlan);
+  }
+
+  // Endpoint-aligned alias: GET /treatment-plans/patient/:id
+  Future<List<TreatmentPlanModel>> getTreatmentPlansForPatient(
+      String patientId) {
+    return getTreatmentPlansByPatientId(patientId);
+  }
+
   TreatmentPlanModel _createMockTreatmentPlan({
     required String id,
     required String patientId,
     required String patientName,
     required String clinicianId,
     required String clinicianName,
-    required String diagnosis,
-    required String status,
-    required DateTime startDate,
-    DateTime? endDate,
+    required Diagnosis diagnosis,
     required List<Prescription> prescriptions,
-    required List<CareInstruction> careInstructions,
-    required String notes,
+    required List<FollowUp> followUps,
+    required Recommendations recommendations,
   }) {
     return TreatmentPlanModel(
       id: id,
       patientId: patientId,
       clinicianId: clinicianId,
       diagnosis: diagnosis,
-      status: status,
-      startDate: startDate,
-      endDate: endDate,
       prescriptions: prescriptions,
-      careInstructions: careInstructions,
-      notes: notes,
-      createdAt: startDate,
+      followUps: followUps,
+      recommendations: recommendations,
+      createdAt: diagnosis.diagnosedAt,
       updatedAt: DateTime.now(),
       patientName: patientName,
       clinicianName: clinicianName,

@@ -1,19 +1,16 @@
-// Treatment Plan model following backend schema
+// Treatment Plan model following 1.3 backend schema
 class TreatmentPlanModel {
   final String id;
   final String patientId;
   final String clinicianId;
-  final String diagnosis;
-  final String status;
-  final DateTime startDate;
-  final DateTime? endDate;
+  final Diagnosis diagnosis;
   final List<Prescription> prescriptions;
-  final List<CareInstruction> careInstructions;
-  final String? notes;
-  final DateTime? createdAt;
-  final DateTime? updatedAt;
+  final List<FollowUp> followUps;
+  final Recommendations recommendations;
+  final DateTime createdAt;
+  final DateTime updatedAt;
 
-  // Populated fields (not in DB, fetched separately)
+  // Populated fields (not persisted in backend schema)
   String? patientName;
   String? clinicianName;
 
@@ -22,97 +19,61 @@ class TreatmentPlanModel {
     required this.patientId,
     required this.clinicianId,
     required this.diagnosis,
-    required this.status,
-    required this.startDate,
-    this.endDate,
     required this.prescriptions,
-    required this.careInstructions,
-    this.notes,
-    this.createdAt,
-    this.updatedAt,
+    required this.followUps,
+    required this.recommendations,
+    required this.createdAt,
+    required this.updatedAt,
     this.patientName,
     this.clinicianName,
   });
 
-  // From JSON
   factory TreatmentPlanModel.fromJson(Map<String, dynamic> json) {
     return TreatmentPlanModel(
       id: json['id'] ?? json['_id'] ?? '',
       patientId: json['patientId'] ?? '',
       clinicianId: json['clinicianId'] ?? '',
-      diagnosis: json['diagnosis'] ?? '',
-      status: json['status'] ?? 'Active',
-      startDate: json['startDate'] != null
-          ? DateTime.parse(json['startDate'])
+      diagnosis: Diagnosis.fromJson(json['diagnosis'] ?? {}),
+      prescriptions: (json['prescriptions'] as List<dynamic>? ?? [])
+          .map((p) => Prescription.fromJson(p as Map<String, dynamic>))
+          .toList(),
+      followUps: (json['followUps'] as List<dynamic>? ?? [])
+          .map((f) => FollowUp.fromJson(f as Map<String, dynamic>))
+          .toList(),
+      recommendations: Recommendations.fromJson(json['recommendations'] ?? {}),
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'])
           : DateTime.now(),
-      endDate: json['endDate'] != null ? DateTime.parse(json['endDate']) : null,
-      prescriptions: json['prescriptions'] != null
-          ? (json['prescriptions'] as List)
-              .map((p) => Prescription.fromJson(p))
-              .toList()
-          : [],
-      careInstructions: json['careInstructions'] != null
-          ? (json['careInstructions'] as List)
-              .map((c) => CareInstruction.fromJson(c))
-              .toList()
-          : [],
-      notes: json['notes'],
-      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
-      updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : null,
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.parse(json['updatedAt'])
+          : DateTime.now(),
       patientName: json['patientName'],
       clinicianName: json['clinicianName'],
     );
   }
 
-  // To JSON
   Map<String, dynamic> toJson() {
     return {
       'id': id,
       'patientId': patientId,
       'clinicianId': clinicianId,
-      'diagnosis': diagnosis,
-      'status': status,
-      'startDate': startDate.toIso8601String(),
-      'endDate': endDate?.toIso8601String(),
+      'diagnosis': diagnosis.toJson(),
       'prescriptions': prescriptions.map((p) => p.toJson()).toList(),
-      'careInstructions': careInstructions.map((c) => c.toJson()).toList(),
-      'notes': notes,
-      'createdAt': createdAt?.toIso8601String(),
-      'updatedAt': updatedAt?.toIso8601String(),
+      'followUps': followUps.map((f) => f.toJson()).toList(),
+      'recommendations': recommendations.toJson(),
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
     };
   }
 
-  // Helper getters
-  bool get isActive => status == TreatmentPlanStatus.active;
-  bool get isCompleted => status == TreatmentPlanStatus.completed;
-  bool get isOnHold => status == TreatmentPlanStatus.onHold;
-
-  int get durationInDays {
-    final end = endDate ?? DateTime.now();
-    return end.difference(startDate).inDays;
-  }
-
-  String get formattedStartDate {
-    return '${startDate.day}/${startDate.month}/${startDate.year}';
-  }
-
-  String get formattedEndDate {
-    if (endDate == null) return 'Ongoing';
-    return '${endDate!.day}/${endDate!.month}/${endDate!.year}';
-  }
-
-  // Copy with method
   TreatmentPlanModel copyWith({
     String? id,
     String? patientId,
     String? clinicianId,
-    String? diagnosis,
-    String? status,
-    DateTime? startDate,
-    DateTime? endDate,
+    Diagnosis? diagnosis,
     List<Prescription>? prescriptions,
-    List<CareInstruction>? careInstructions,
-    String? notes,
+    List<FollowUp>? followUps,
+    Recommendations? recommendations,
     DateTime? createdAt,
     DateTime? updatedAt,
     String? patientName,
@@ -123,135 +84,212 @@ class TreatmentPlanModel {
       patientId: patientId ?? this.patientId,
       clinicianId: clinicianId ?? this.clinicianId,
       diagnosis: diagnosis ?? this.diagnosis,
-      status: status ?? this.status,
-      startDate: startDate ?? this.startDate,
-      endDate: endDate ?? this.endDate,
       prescriptions: prescriptions ?? this.prescriptions,
-      careInstructions: careInstructions ?? this.careInstructions,
-      notes: notes ?? this.notes,
+      followUps: followUps ?? this.followUps,
+      recommendations: recommendations ?? this.recommendations,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       patientName: patientName ?? this.patientName,
       clinicianName: clinicianName ?? this.clinicianName,
     );
   }
+
+  bool hasFollowUpStatus(String status) {
+    return followUps.any((f) => f.status == status);
+  }
+
+  FollowUp? get nextPendingFollowUp {
+    final now = DateTime.now();
+    final pending = followUps
+        .where((f) => f.status == FollowUpStatus.pending)
+        .where((f) => !f.scheduledDate.isBefore(now))
+        .toList()
+      ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
+    return pending.isEmpty ? null : pending.first;
+  }
+
+  String get formattedDiagnosedAt {
+    final d = diagnosis.diagnosedAt;
+    return '${d.day}/${d.month}/${d.year}';
+  }
 }
 
-// Prescription model
-class Prescription {
-  final String medicationName;
-  final String dosage;
-  final String frequency;
-  final String duration;
-  final String? instructions;
+class Diagnosis {
+  final String condition;
+  final DateTime diagnosedAt;
+  final String icd10Code;
 
-  Prescription({
-    required this.medicationName,
-    required this.dosage,
-    required this.frequency,
-    required this.duration,
-    this.instructions,
+  Diagnosis({
+    required this.condition,
+    required this.diagnosedAt,
+    required this.icd10Code,
   });
 
-  factory Prescription.fromJson(Map<String, dynamic> json) {
-    return Prescription(
-      medicationName: json['medicationName'] ?? '',
-      dosage: json['dosage'] ?? '',
-      frequency: json['frequency'] ?? '',
-      duration: json['duration'] ?? '',
-      instructions: json['instructions'],
+  factory Diagnosis.fromJson(Map<String, dynamic> json) {
+    return Diagnosis(
+      condition: json['condition'] ?? '',
+      diagnosedAt: json['diagnosedAt'] != null
+          ? DateTime.parse(json['diagnosedAt'])
+          : DateTime.now(),
+      icd10Code: json['icd10Code'] ?? '',
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'medicationName': medicationName,
+      'condition': condition,
+      'diagnosedAt': diagnosedAt.toIso8601String(),
+      'icd10Code': icd10Code,
+    };
+  }
+}
+
+class Prescription {
+  final String medication;
+  final String dosage;
+  final String frequency;
+  final DateTime startDate;
+  final DateTime? endDate;
+  final String instructions;
+
+  Prescription({
+    required this.medication,
+    required this.dosage,
+    required this.frequency,
+    required this.startDate,
+    this.endDate,
+    required this.instructions,
+  });
+
+  factory Prescription.fromJson(Map<String, dynamic> json) {
+    return Prescription(
+      medication: json['medication'] ?? '',
+      dosage: json['dosage'] ?? '',
+      frequency: json['frequency'] ?? '',
+      startDate: json['startDate'] != null
+          ? DateTime.parse(json['startDate'])
+          : DateTime.now(),
+      endDate: json['endDate'] != null ? DateTime.parse(json['endDate']) : null,
+      instructions: json['instructions'] ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'medication': medication,
       'dosage': dosage,
       'frequency': frequency,
-      'duration': duration,
+      'startDate': startDate.toIso8601String(),
+      'endDate': endDate?.toIso8601String(),
       'instructions': instructions,
     };
   }
 }
 
-// Care Instruction model
-class CareInstruction {
-  final String instruction;
-  final String category;
-  final String? frequency;
+class FollowUp {
+  final DateTime scheduledDate;
+  final String purpose;
+  final String status;
 
-  CareInstruction({
-    required this.instruction,
-    required this.category,
-    this.frequency,
+  FollowUp({
+    required this.scheduledDate,
+    required this.purpose,
+    required this.status,
   });
 
-  factory CareInstruction.fromJson(Map<String, dynamic> json) {
-    return CareInstruction(
-      instruction: json['instruction'] ?? '',
-      category: json['category'] ?? 'General',
-      frequency: json['frequency'],
+  factory FollowUp.fromJson(Map<String, dynamic> json) {
+    return FollowUp(
+      scheduledDate: json['scheduledDate'] != null
+          ? DateTime.parse(json['scheduledDate'])
+          : DateTime.now(),
+      purpose: json['purpose'] ?? '',
+      status: json['status'] ?? FollowUpStatus.pending,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'instruction': instruction,
-      'category': category,
-      'frequency': frequency,
+      'scheduledDate': scheduledDate.toIso8601String(),
+      'purpose': purpose,
+      'status': status,
     };
   }
 }
 
-// Treatment Plan Status Constants
-class TreatmentPlanStatus {
-  static const String active = 'Active';
-  static const String completed = 'Completed';
-  static const String onHold = 'On-Hold';
-  static const String cancelled = 'Cancelled';
+class Recommendations {
+  final List<String> lifestyleChanges;
+  final List<Referral> referrals;
 
-  static List<String> get all => [
-        active,
-        completed,
-        onHold,
-        cancelled,
-      ];
+  Recommendations({
+    required this.lifestyleChanges,
+    required this.referrals,
+  });
+
+  factory Recommendations.fromJson(Map<String, dynamic> json) {
+    return Recommendations(
+      lifestyleChanges: (json['lifestyleChanges'] as List<dynamic>? ?? [])
+          .map((item) => item.toString())
+          .toList(),
+      referrals: (json['referrals'] as List<dynamic>? ?? [])
+          .map((r) => Referral.fromJson(r as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'lifestyleChanges': lifestyleChanges,
+      'referrals': referrals.map((r) => r.toJson()).toList(),
+    };
+  }
 }
 
-// Prescription Frequency Constants
+class Referral {
+  final String specialist;
+  final String reason;
+
+  Referral({
+    required this.specialist,
+    required this.reason,
+  });
+
+  factory Referral.fromJson(Map<String, dynamic> json) {
+    return Referral(
+      specialist: json['specialist'] ?? '',
+      reason: json['reason'] ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'specialist': specialist,
+      'reason': reason,
+    };
+  }
+}
+
+class FollowUpStatus {
+  static const String pending = 'Pending';
+  static const String completed = 'Completed';
+  static const String cancelled = 'Cancelled';
+
+  static List<String> get all => [pending, completed, cancelled];
+}
+
 class PrescriptionFrequency {
-  static const String onceDailyl = 'Once daily';
+  static const String onceDaily = 'Once daily';
   static const String twiceDaily = 'Twice daily';
-  static const String threeTimes = 'Three times daily';
-  static const String fourTimes = 'Four times daily';
+  static const String threeTimesDaily = 'Three times daily';
+  static const String fourTimesDaily = 'Four times daily';
   static const String asNeeded = 'As needed';
   static const String weekly = 'Weekly';
 
   static List<String> get all => [
-        onceDailyl,
+        onceDaily,
         twiceDaily,
-        threeTimes,
-        fourTimes,
+        threeTimesDaily,
+        fourTimesDaily,
         asNeeded,
         weekly,
-      ];
-}
-
-// Care Instruction Category Constants
-class CareCategory {
-  static const String diet = 'Diet';
-  static const String exercise = 'Exercise';
-  static const String lifestyle = 'Lifestyle';
-  static const String monitoring = 'Monitoring';
-  static const String medication = 'Medication';
-  static const String followUp = 'Follow-up';
-
-  static List<String> get all => [
-        diet,
-        exercise,
-        lifestyle,
-        monitoring,
-        medication,
-        followUp,
       ];
 }

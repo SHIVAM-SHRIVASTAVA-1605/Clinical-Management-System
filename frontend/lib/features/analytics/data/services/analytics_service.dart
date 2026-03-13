@@ -1,4 +1,7 @@
 import 'package:frontend/features/analytics/data/models/analytics_model.dart';
+import 'package:frontend/core/constants/api_constants.dart';
+import 'dart:typed_data';
+import 'package:pdf/widgets.dart' as pw;
 
 // Analytics service for ClinicalAnalytics records and data aggregation
 class AnalyticsService {
@@ -19,7 +22,8 @@ class AnalyticsService {
     DateTime? startDate,
     DateTime? endDate,
   }) async {
-    // TODO: Replace with actual API call when backend is ready
+    final endpoint = ApiConstants.analytics;
+    // TODO: Replace mock flow with GET endpoint call
     await Future.delayed(const Duration(milliseconds: 500));
 
     // Initialize mock data if empty
@@ -66,6 +70,7 @@ class AnalyticsService {
       return true;
     }).toList();
 
+    if (endpoint.isEmpty) return <ClinicalAnalyticsModel>[];
     return filtered;
   }
 
@@ -128,7 +133,8 @@ class AnalyticsService {
     String? metricType,
     AnalyticsFilters? filters,
   }) async {
-    // TODO: Implement actual CSV export when backend is ready
+    final endpoint = ApiConstants.analyticsExport;
+    // TODO: Implement POST endpoint call with format=csv
     await Future.delayed(const Duration(milliseconds: 500));
 
     final records = await getAnalytics(
@@ -156,7 +162,19 @@ class AnalyticsService {
       );
     }
 
-    return csv.toString();
+    return '${csv.toString()}\n# endpoint: $endpoint';
+  }
+
+  // Export analytics as CSV bytes for file download
+  Future<Uint8List> exportAnalyticsAsCSVBytes({
+    String? metricType,
+    AnalyticsFilters? filters,
+  }) async {
+    final csv = await exportAnalyticsAsCSV(
+      metricType: metricType,
+      filters: filters,
+    );
+    return Uint8List.fromList(csv.codeUnits);
   }
 
   // Export analytics data as PDF (mock - returns path/URL)
@@ -164,11 +182,91 @@ class AnalyticsService {
     String? metricType,
     AnalyticsFilters? filters,
   }) async {
-    // TODO: Implement actual PDF export when backend is ready
+    final endpoint = ApiConstants.analyticsExport;
+    // TODO: Implement POST endpoint call with format=pdf
     await Future.delayed(const Duration(milliseconds: 800));
 
     // Mock PDF generation - return a mock file path
-    return '/exports/analytics_${DateTime.now().millisecondsSinceEpoch}.pdf';
+    return '/exports/analytics_${DateTime.now().millisecondsSinceEpoch}.pdf?source=$endpoint';
+  }
+
+  // Export analytics as PDF bytes for file download
+  Future<Uint8List> exportAnalyticsAsPDFBytes({
+    String? metricType,
+    AnalyticsFilters? filters,
+  }) async {
+    final records = await getAnalytics(
+      metricType: metricType,
+      clinicianId: filters?.clinicianId,
+      location: filters?.location,
+      patientAgeGroup: filters?.patientAgeGroup,
+    );
+
+    final doc = pw.Document();
+    doc.addPage(
+      pw.MultiPage(
+        build: (context) => [
+          pw.Header(level: 0, child: pw.Text('Clinical Analytics Export')),
+          pw.Paragraph(text: 'Generated at: ${DateTime.now().toIso8601String()}'),
+          pw.SizedBox(height: 8),
+          pw.Table.fromTextArray(
+            headers: const [
+              'Metric Type',
+              'Start',
+              'End',
+              'Value',
+              'Clinician ID',
+              'Location',
+              'Age Group',
+            ],
+            data: records.map((record) {
+              return [
+                record.metricType,
+                record.data.timeRange.start.toIso8601String(),
+                record.data.timeRange.end.toIso8601String(),
+                record.data.value.toString(),
+                record.data.filters.clinicianId ?? '',
+                record.data.filters.location ?? '',
+                record.data.filters.patientAgeGroup ?? '',
+              ];
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+
+    return doc.save();
+  }
+
+  // Endpoint-aligned alias: GET /analytics
+  Future<List<ClinicalAnalyticsModel>> fetchAnalytics({
+    String? metricType,
+    String? clinicianId,
+    String? location,
+    String? patientAgeGroup,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) {
+    return getAnalytics(
+      metricType: metricType,
+      clinicianId: clinicianId,
+      location: location,
+      patientAgeGroup: patientAgeGroup,
+      startDate: startDate,
+      endDate: endDate,
+    );
+  }
+
+  // Endpoint-aligned alias: POST /analytics/export
+  Future<String> exportAnalytics({
+    required String format,
+    String? metricType,
+    AnalyticsFilters? filters,
+  }) {
+    if (format.toLowerCase() == 'pdf') {
+      return exportAnalyticsAsPDF(metricType: metricType, filters: filters);
+    }
+    return exportAnalyticsAsCSV(metricType: metricType, filters: filters);
   }
 
   // Initialize mock analytics records
@@ -188,6 +286,7 @@ class AnalyticsService {
           filters: AnalyticsFilters(),
         ),
         generatedAt: now,
+        updatedAt: now,
       ),
 
       // Treatment Outcomes
@@ -204,6 +303,7 @@ class AnalyticsService {
           filters: AnalyticsFilters(),
         ),
         generatedAt: now,
+        updatedAt: now,
       ),
 
       // Revenue Analysis by location
@@ -216,6 +316,7 @@ class AnalyticsService {
           filters: AnalyticsFilters(location: 'Main Clinic'),
         ),
         generatedAt: now,
+        updatedAt: now,
       ),
 
       // Patient Demographics by age group
@@ -228,6 +329,7 @@ class AnalyticsService {
           filters: AnalyticsFilters(patientAgeGroup: PatientAgeGroup.adult),
         ),
         generatedAt: now,
+        updatedAt: now,
       ),
 
       // Clinician Performance
@@ -244,6 +346,7 @@ class AnalyticsService {
           filters: AnalyticsFilters(clinicianId: '1'),
         ),
         generatedAt: now,
+        updatedAt: now,
       ),
     ]);
   }

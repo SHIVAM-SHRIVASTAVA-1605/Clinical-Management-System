@@ -24,12 +24,16 @@ class TreatmentPlanProvider extends ChangeNotifier {
     if (_filterStatus == 'All') {
       return _treatmentPlans;
     }
-    return _treatmentPlans.where((t) => t.status == _filterStatus).toList();
+    return _treatmentPlans
+        .where((t) => t.hasFollowUpStatus(_filterStatus))
+        .toList();
   }
 
-  // Active treatment plans
+  // Active treatment plans have at least one pending follow-up
   List<TreatmentPlanModel> get activeTreatmentPlans {
-    return _treatmentPlans.where((t) => t.isActive).toList();
+    return _treatmentPlans
+        .where((t) => t.hasFollowUpStatus(FollowUpStatus.pending))
+        .toList();
   }
 
   // Set filter status
@@ -58,7 +62,8 @@ class TreatmentPlanProvider extends ChangeNotifier {
     _clearError();
 
     try {
-      _selectedTreatmentPlan = await _treatmentPlanService.getTreatmentPlanById(id);
+      _selectedTreatmentPlan =
+          await _treatmentPlanService.getTreatmentPlanById(id);
       _setLoading(false);
     } catch (e) {
       _setError('Failed to load treatment plan: ${e.toString()}');
@@ -72,7 +77,8 @@ class TreatmentPlanProvider extends ChangeNotifier {
     _clearError();
 
     try {
-      _treatmentPlans = await _treatmentPlanService.getTreatmentPlansByPatientId(patientId);
+      _treatmentPlans =
+          await _treatmentPlanService.getTreatmentPlansByPatientId(patientId);
       _setLoading(false);
     } catch (e) {
       _setError('Failed to load treatment plans: ${e.toString()}');
@@ -86,7 +92,8 @@ class TreatmentPlanProvider extends ChangeNotifier {
     _clearError();
 
     try {
-      _treatmentPlans = await _treatmentPlanService.getTreatmentPlansByClinicianId(clinicianId);
+      _treatmentPlans = await _treatmentPlanService
+          .getTreatmentPlansByClinicianId(clinicianId);
       _setLoading(false);
     } catch (e) {
       _setError('Failed to load treatment plans: ${e.toString()}');
@@ -114,7 +121,8 @@ class TreatmentPlanProvider extends ChangeNotifier {
     _clearError();
 
     try {
-      _treatmentPlans = await _treatmentPlanService.getTreatmentPlansByStatus(status);
+      _treatmentPlans =
+          await _treatmentPlanService.getTreatmentPlansByStatus(status);
       _setLoading(false);
     } catch (e) {
       _setError('Failed to load treatment plans: ${e.toString()}');
@@ -128,8 +136,9 @@ class TreatmentPlanProvider extends ChangeNotifier {
     _clearError();
 
     try {
-      final response = await _treatmentPlanService.addTreatmentPlan(treatmentPlan);
-      
+      final response =
+          await _treatmentPlanService.addTreatmentPlan(treatmentPlan);
+
       if (response['success'] == true) {
         await fetchTreatmentPlans(); // Refresh list
         _setLoading(false);
@@ -147,13 +156,15 @@ class TreatmentPlanProvider extends ChangeNotifier {
   }
 
   // Update treatment plan
-  Future<bool> updateTreatmentPlan(String id, TreatmentPlanModel treatmentPlan) async {
+  Future<bool> updateTreatmentPlan(
+      String id, TreatmentPlanModel treatmentPlan) async {
     _setLoading(true);
     _clearError();
 
     try {
-      final response = await _treatmentPlanService.updateTreatmentPlan(id, treatmentPlan);
-      
+      final response =
+          await _treatmentPlanService.updateTreatmentPlan(id, treatmentPlan);
+
       if (response['success'] == true) {
         await fetchTreatmentPlans();
         _setLoading(false);
@@ -170,50 +181,6 @@ class TreatmentPlanProvider extends ChangeNotifier {
     }
   }
 
-  // Update treatment plan status
-  Future<bool> updateTreatmentPlanStatus(String id, String status) async {
-    _setLoading(true);
-    _clearError();
-
-    try {
-      final response = await _treatmentPlanService.updateTreatmentPlanStatus(id, status);
-      
-      if (response['success'] == true) {
-        await fetchTreatmentPlans();
-        _setLoading(false);
-        return true;
-      } else {
-        _setError(response['message'] ?? 'Failed to update status');
-        _setLoading(false);
-        return false;
-      }
-    } catch (e) {
-      _setError('Failed to update status: ${e.toString()}');
-      _setLoading(false);
-      return false;
-    }
-  }
-
-  // Complete treatment plan
-  Future<bool> completeTreatmentPlan(String id) async {
-    return await updateTreatmentPlanStatus(id, TreatmentPlanStatus.completed);
-  }
-
-  // Put treatment plan on hold
-  Future<bool> holdTreatmentPlan(String id) async {
-    return await updateTreatmentPlanStatus(id, TreatmentPlanStatus.onHold);
-  }
-
-  // Cancel treatment plan
-  Future<bool> cancelTreatmentPlan(String id) async {
-    return await updateTreatmentPlanStatus(id, TreatmentPlanStatus.cancelled);
-  }
-
-  // Reactivate treatment plan
-  Future<bool> reactivateTreatmentPlan(String id) async {
-    return await updateTreatmentPlanStatus(id, TreatmentPlanStatus.active);
-  }
-
   // Delete treatment plan
   Future<bool> deleteTreatmentPlan(String id) async {
     _setLoading(true);
@@ -221,7 +188,7 @@ class TreatmentPlanProvider extends ChangeNotifier {
 
     try {
       final response = await _treatmentPlanService.deleteTreatmentPlan(id);
-      
+
       if (response['success'] == true) {
         await fetchTreatmentPlans();
         _setLoading(false);
