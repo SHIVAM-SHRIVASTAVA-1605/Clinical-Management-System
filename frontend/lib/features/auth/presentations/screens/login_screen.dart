@@ -31,7 +31,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleLogin() async {
-    if(_formKey.currentState!.validate()) {
+    if (_formKey.currentState!.validate()) {
       final authProvider = context.read<AuthProvider>();
 
       final success = await authProvider.login(
@@ -39,22 +39,11 @@ class _LoginScreenState extends State<LoginScreen> {
         password: _passwordController.text,
       );
 
-      if(!mounted) return;
+      if (!mounted) return;
 
-      if(success) {
+      if (success) {
         ToastHelper.showSuccess(context, 'Login successful!');
-        
-        // TODO: Naviagte to role based dashboard
-        final user = authProvider.user;
-        String route = AppRoutes.clinicianDashboard;
-
-        if(user?.isAdmin == true) {
-          route = AppRoutes.adminDashboard;
-        } else if(user?.isClinician == true) {
-          route = AppRoutes.clinicianDashboard;
-        }
-        
-        Navigator.pushReplacementNamed(context, route);
+        Navigator.pushReplacementNamed(context, AppRoutes.clinicianDashboard);
       } else {
         ToastHelper.showError(
           context,
@@ -91,13 +80,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     color: Colors.blue,
                   ),
                   const SizedBox(height: 24),
-                  
+
                   // Title
                   Text(
                     AppStrings.welcomeBack,
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                          fontWeight: FontWeight.bold,
+                        ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
@@ -106,8 +95,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   Text(
                     'Sign in to continue',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.grey,
-                    ),
+                          color: Colors.grey,
+                        ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 40),
@@ -118,11 +107,11 @@ class _LoginScreenState extends State<LoginScreen> {
                     hint: 'enter your email',
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
-                    validator: Validators.email, 
+                    validator: Validators.email,
                     prefixIcon: const Icon(Icons.email_outlined),
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // pass field
                   CustomTextField(
                     label: AppStrings.password,
@@ -133,7 +122,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     prefixIcon: const Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                        _obscurePassword
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
                       ),
                       onPressed: () {
                         setState(() {
@@ -162,7 +153,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     children: [
                       const Text("Don't have an account? "),
                       TextButton(
-                        onPressed: _navigateToRegister, 
+                        onPressed: _navigateToRegister,
                         child: const Text(AppStrings.register),
                       ),
                     ],

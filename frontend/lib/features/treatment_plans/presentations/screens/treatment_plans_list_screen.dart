@@ -60,9 +60,9 @@ class _TreatmentPlansListScreenState extends State<TreatmentPlansListScreen> {
                 final user = authProvider.user;
                 final allTreatmentPlans =
                     treatmentPlanProvider.filteredTreatmentPlans;
-                final filteredTreatmentPlans = user?.isClinician == true
+                final filteredTreatmentPlans = user != null
                     ? allTreatmentPlans
-                        .where((plan) => plan.clinicianId == user!.id)
+                        .where((plan) => plan.clinicianId == user.id)
                         .toList()
                     : allTreatmentPlans;
 

@@ -29,6 +29,9 @@ class _AppointmentsListScreenState extends State<AppointmentsListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currentUser = context.watch<AuthProvider>().user;
+    final canBookAppointment = currentUser != null;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Appointments'),
@@ -43,13 +46,15 @@ class _AppointmentsListScreenState extends State<AppointmentsListScreen> {
         children: [
           // Filter Chips
           _buildFilterChips(),
-          
+
           // Appointments List
           Expanded(
             child: Consumer2<AppointmentProvider, AuthProvider>(
               builder: (context, appointmentProvider, authProvider, child) {
-                if (appointmentProvider.isLoading && appointmentProvider.appointments.isEmpty) {
-                  return const LoadingWidget(message: 'Loading appointments...');
+                if (appointmentProvider.isLoading &&
+                    appointmentProvider.appointments.isEmpty) {
+                  return const LoadingWidget(
+                      message: 'Loading appointments...');
                 }
 
                 if (appointmentProvider.errorMessage != null) {
@@ -59,12 +64,15 @@ class _AppointmentsListScreenState extends State<AppointmentsListScreen> {
                   );
                 }
 
-                // Filter appointments based on user role
+                // Clinician-only: show appointments assigned to the signed-in clinician.
                 final user = authProvider.user;
-                final allAppointments = appointmentProvider.filteredAppointments;
-                final filteredAppointments = user?.isClinician == true
-                    ? allAppointments.where((appointment) => 
-                        appointment.clinicianId == user!.id).toList()
+                final allAppointments =
+                    appointmentProvider.filteredAppointments;
+                final filteredAppointments = user != null
+                    ? allAppointments
+                        .where(
+                            (appointment) => appointment.clinicianId == user.id)
+                        .toList()
                     : allAppointments;
 
                 if (filteredAppointments.isEmpty) {
@@ -73,10 +81,15 @@ class _AppointmentsListScreenState extends State<AppointmentsListScreen> {
                     message: appointmentProvider.filterStatus == 'All'
                         ? 'No appointments found'
                         : 'No ${appointmentProvider.filterStatus.toLowerCase()} appointments',
-                    actionLabel: 'Book Appointment',
-                    onAction: () {
-                      Navigator.pushNamed(context, AppRoutes.bookAppointment);
-                    },
+                    actionLabel: canBookAppointment ? 'Book Appointment' : null,
+                    onAction: canBookAppointment
+                        ? () {
+                            Navigator.pushNamed(
+                              context,
+                              AppRoutes.bookAppointment,
+                            );
+                          }
+                        : null,
                   );
                 }
 
@@ -96,13 +109,15 @@ class _AppointmentsListScreenState extends State<AppointmentsListScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.pushNamed(context, AppRoutes.bookAppointment);
-        },
-        icon: const Icon(Icons.add),
-        label: const Text('Book Appointment'),
-      ),
+      floatingActionButton: canBookAppointment
+          ? FloatingActionButton.extended(
+              onPressed: () {
+                Navigator.pushNamed(context, AppRoutes.bookAppointment);
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Book Appointment'),
+            )
+          : null,
     );
   }
 
@@ -110,7 +125,7 @@ class _AppointmentsListScreenState extends State<AppointmentsListScreen> {
     return Consumer<AppointmentProvider>(
       builder: (context, provider, child) {
         final filters = ['All', ...AppointmentStatus.all];
-        
+
         return Container(
           height: 60,
           padding: const EdgeInsets.symmetric(vertical: 8),
@@ -121,7 +136,7 @@ class _AppointmentsListScreenState extends State<AppointmentsListScreen> {
             itemBuilder: (context, index) {
               final filter = filters[index];
               final isSelected = provider.filterStatus == filter;
-              
+
               return Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: FilterChip(
@@ -141,7 +156,8 @@ class _AppointmentsListScreenState extends State<AppointmentsListScreen> {
     );
   }
 
-  Widget _buildAppointmentCard(BuildContext context, AppointmentModel appointment) {
+  Widget _buildAppointmentCard(
+      BuildContext context, AppointmentModel appointment) {
     return Card(
       elevation: 2,
       margin: const EdgeInsets.only(bottom: 12),
@@ -169,7 +185,8 @@ class _AppointmentsListScreenState extends State<AppointmentsListScreen> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: _getStatusColor(appointment.status).withOpacity(0.1),
+                      color:
+                          _getStatusColor(appointment.status).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Column(
@@ -193,7 +210,7 @@ class _AppointmentsListScreenState extends State<AppointmentsListScreen> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  
+
                   // Appointment Details
                   Expanded(
                     child: Column(
@@ -216,7 +233,7 @@ class _AppointmentsListScreenState extends State<AppointmentsListScreen> {
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            Icon(
+                            const Icon(
                               Icons.schedule,
                               size: 16,
                               color: AppColors.textSecondary,
@@ -230,7 +247,7 @@ class _AppointmentsListScreenState extends State<AppointmentsListScreen> {
                               ),
                             ),
                             const SizedBox(width: 12),
-                            Icon(
+                            const Icon(
                               Icons.timelapse,
                               size: 16,
                               color: AppColors.textSecondary,
@@ -250,9 +267,9 @@ class _AppointmentsListScreenState extends State<AppointmentsListScreen> {
                   ),
                 ],
               ),
-              
+
               const Divider(height: 24),
-              
+
               // Patient & Clinician Info
               Row(
                 children: [
@@ -273,9 +290,9 @@ class _AppointmentsListScreenState extends State<AppointmentsListScreen> {
                   ),
                 ],
               ),
-              
+
               const SizedBox(height: 8),
-              
+
               // Location
               _buildInfoChip(
                 Icons.location_on,
@@ -356,8 +373,20 @@ class _AppointmentsListScreenState extends State<AppointmentsListScreen> {
   }
 
   String _getMonthShort(int month) {
-    const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 
-                    'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    const months = [
+      'JAN',
+      'FEB',
+      'MAR',
+      'APR',
+      'MAY',
+      'JUN',
+      'JUL',
+      'AUG',
+      'SEP',
+      'OCT',
+      'NOV',
+      'DEC'
+    ];
     return months[month - 1];
   }
 

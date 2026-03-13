@@ -16,29 +16,6 @@ class AuthProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   bool get isAuthenticated => _user != null;
 
-  // Get pending clinicians (admin only)
-  List<UserModel> getPendingClinicians() {
-    return _authService.getPendingClinicians();
-  }
-
-  // Verify clinician (admin only)
-  Future<bool> verifyClinician(String userId) async {
-    final success = await _authService.verifyClinician(userId);
-    if (success) {
-      notifyListeners();
-    }
-    return success;
-  }
-
-  // Reject clinician (admin only)
-  Future<bool> rejectClinician(String userId) async {
-    final success = await _authService.rejectClinician(userId);
-    if (success) {
-      notifyListeners();
-    }
-    return success;
-  }
-
   // login method
   Future<bool> login({
     required String email,
@@ -49,11 +26,11 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       final response = await _authService.login(
-        email: email, 
+        email: email,
         password: password,
       );
 
-      if(response['success'] == true) {
+      if (response['success'] == true) {
         _user = UserModel.fromJson(response['user']);
         _setLoading(false);
         notifyListeners();
@@ -63,7 +40,7 @@ class AuthProvider extends ChangeNotifier {
         _setLoading(false);
         return false;
       }
-    } catch(e) {
+    } catch (e) {
       _setError('Login failed: ${e.toString()}');
       _setLoading(false);
       return false;
@@ -76,7 +53,6 @@ class AuthProvider extends ChangeNotifier {
     required String email,
     required String password,
     String? phone,
-    required String role,
   }) async {
     _setLoading(true);
     _clearError();
@@ -87,12 +63,10 @@ class AuthProvider extends ChangeNotifier {
         email: email,
         password: password,
         phone: phone,
-        role: role,
       );
 
       if (response['success'] == true) {
-        // Only set user if they don't need verification
-        if (response['requiresVerification'] != true && response['user'] != null) {
+        if (response['user'] != null) {
           _user = UserModel.fromJson(response['user']);
         }
         _setLoading(false);
@@ -128,14 +102,13 @@ class AuthProvider extends ChangeNotifier {
 
     final isLoggedIn = await _authService.isLoggedIn();
 
-    if(isLoggedIn) {
+    if (isLoggedIn) {
       final savedUser = await _authService.getSavedUser();
       _user = savedUser;
     }
 
     _setLoading(false);
     notifyListeners();
-
   }
 
   // private helper methods

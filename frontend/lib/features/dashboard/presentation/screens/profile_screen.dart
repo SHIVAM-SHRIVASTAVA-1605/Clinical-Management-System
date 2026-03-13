@@ -94,7 +94,7 @@ class ProfileScreen extends StatelessWidget {
                           user.name.isNotEmpty
                               ? user.name[0].toUpperCase()
                               : 'U',
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 48,
                             fontWeight: FontWeight.bold,
                             color: AppColors.primary,
@@ -123,9 +123,9 @@ class ProfileScreen extends StatelessWidget {
                         color: Colors.white.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: Text(
-                        user.role.toUpperCase(),
-                        style: const TextStyle(
+                      child: const Text(
+                        'CLINICIAN',
+                        style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
@@ -177,7 +177,7 @@ class ProfileScreen extends StatelessWidget {
                   _buildInfoCard(
                     icon: Icons.badge_outlined,
                     label: 'Role',
-                    value: _getRoleDisplayName(user.role),
+                    value: 'Healthcare Provider',
                     iconColor: AppColors.info,
                   ),
                   const SizedBox(height: 12),
@@ -187,21 +187,11 @@ class ProfileScreen extends StatelessWidget {
                     _buildInfoCard(
                       icon: Icons.calendar_today_outlined,
                       label: 'Member Since',
-                      value: DateFormat('MMMM dd, yyyy').format(user.createdAt!),
+                      value:
+                          DateFormat('MMMM dd, yyyy').format(user.createdAt!),
                       iconColor: AppColors.warning,
                     ),
                   if (user.createdAt != null) const SizedBox(height: 12),
-
-                  // Verification Status (for clinicians)
-                  if (user.isClinician)
-                    _buildInfoCard(
-                      icon: user.isVerified
-                          ? Icons.verified_outlined
-                          : Icons.pending_outlined,
-                      label: 'Verification Status',
-                      value: user.isVerified ? 'Verified' : 'Pending',
-                      iconColor: user.isVerified ? Colors.green : Colors.orange,
-                    ),
 
                   const SizedBox(height: 32),
 
@@ -286,7 +276,8 @@ class ProfileScreen extends StatelessWidget {
                         // TODO: Implement account deletion
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Account deletion feature coming soon!'),
+                            content:
+                                Text('Account deletion feature coming soon!'),
                           ),
                         );
                       }
@@ -424,18 +415,5 @@ class ProfileScreen extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  String _getRoleDisplayName(String role) {
-    switch (role.toLowerCase()) {
-      case 'admin':
-        return 'Administrator';
-      case 'clinician':
-        return 'Healthcare Provider';
-      case 'patient':
-        return 'Patient';
-      default:
-        return role;
-    }
   }
 }

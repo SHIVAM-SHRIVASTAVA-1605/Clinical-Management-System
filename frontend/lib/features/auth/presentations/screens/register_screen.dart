@@ -25,7 +25,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _confirmPasswordController = TextEditingController();
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
-  String _selectedRole = 'clinician';
 
   @override
   void dispose() {
@@ -48,36 +47,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
         phone: _phoneController.text.trim().isEmpty
             ? null
             : _phoneController.text.trim(),
-        role: _selectedRole,
       );
 
       if (!mounted) return;
 
       if (result['success']) {
-        // Check if clinician needs verification
-        if (result['requiresVerification'] == true) {
-          ToastHelper.showSuccess(
-            context,
-            'Registration successful! Your account is pending admin verification.',
-          );
-          // Navigate back to login
-          Navigator.pushReplacementNamed(context, AppRoutes.login);
-        } else {
-          // Clinician registered successfully
-          ToastHelper.showSuccess(context, 'Registration Successful!');
-
-          // Navigate to appropriate dashboard
-          final user = authProvider.user;
-          String route = AppRoutes.clinicianDashboard;
-
-          if (user?.isAdmin == true) {
-            route = AppRoutes.adminDashboard;
-          } else if (user?.isClinician == true) {
-            route = AppRoutes.clinicianDashboard;
-          }
-
-          Navigator.pushReplacementNamed(context, route);
-        }
+        ToastHelper.showSuccess(context, 'Registration successful!');
+        Navigator.pushReplacementNamed(context, AppRoutes.clinicianDashboard);
       } else {
         ToastHelper.showError(
           context,
@@ -113,8 +89,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 Text(
                   'Create Account',
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                        fontWeight: FontWeight.bold,
+                      ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
@@ -123,66 +99,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 Text(
                   'Sign up to get started',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.grey,
-                  ),
+                        color: Colors.grey,
+                      ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 32),
 
-                // Role Selection
-                const Text(
-                  'I am a:',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    children: [
-                      RadioListTile<String>(
-                        title: const Row(
-                          children: [
-                            Icon(Icons.medical_services, color: Colors.green),
-                            SizedBox(width: 8),
-                            Text('Clinician'),
-                          ],
-                        ),
-                        subtitle: const Text(
-                          'Requires admin verification',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
-                        value: 'clinician',
-                        groupValue: _selectedRole,
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedRole = value!;
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 8),
 
                 // Name Field
                 CustomTextField(
                   label: 'Full Name',
                   hint: 'Enter your full name',
                   controller: _nameController,
-                  validator: (value) => Validators.required(value, fieldName: 'Name'),
+                  validator: (value) =>
+                      Validators.required(value, fieldName: 'Name'),
                   prefixIcon: const Icon(Icons.person_outline),
                 ),
                 const SizedBox(height: 16),
-                
+
                 // email field
                 CustomTextField(
                   label: AppStrings.email,
@@ -253,32 +188,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                // Information banner for clinicians
-                if (_selectedRole == 'clinician')
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.orange.shade200),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.info_outline, color: Colors.orange.shade700),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'Your account will be reviewed by an admin before you can sign in.',
-                            style: TextStyle(
-                              color: Colors.orange.shade900,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                if (_selectedRole == 'clinician') const SizedBox(height: 16),
+                const SizedBox(height: 16),
 
                 // Register button
                 Consumer<AuthProvider>(
@@ -298,7 +208,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   children: [
                     const Text('Already have an account? '),
                     TextButton(
-                      onPressed: () => Navigator.pop(context), 
+                      onPressed: () => Navigator.pop(context),
                       child: const Text(AppStrings.login),
                     ),
                   ],

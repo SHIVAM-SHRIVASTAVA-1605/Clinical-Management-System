@@ -54,24 +54,23 @@ class AppDrawer extends StatelessWidget {
                   title: 'Dashboard',
                   onTap: () {
                     Navigator.pop(context);
-                    // Navigate to role-specific dashboard
-                    _navigateToDashboard(context, user?.role ?? 'patient');
+                    Navigator.pushReplacementNamed(
+                        context, AppRoutes.clinicianDashboard);
                   },
                 ),
 
                 const Divider(),
 
-                // Clinicians (Admin only)
-                if (user?.isAdmin == true)
-                  _buildDrawerItem(
-                    context,
-                    icon: Icons.medical_services,
-                    title: 'Clinicians',
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.pushNamed(context, AppRoutes.clinicians);
-                    },
-                  ),
+                // Clinicians
+                _buildDrawerItem(
+                  context,
+                  icon: Icons.medical_services,
+                  title: 'Clinicians',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, AppRoutes.clinicians);
+                  },
+                ),
 
                 // Appointments
                 _buildDrawerItem(
@@ -84,40 +83,27 @@ class AppDrawer extends StatelessWidget {
                   },
                 ),
 
-                // Treatment Plans (Clinician only)
-                if (user?.isClinician == true)
-                  _buildDrawerItem(
-                    context,
-                    icon: Icons.description,
-                    title: 'Treatment Plans',
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.pushNamed(context, AppRoutes.treatmentPlans);
-                    },
-                  ),
+                // Treatment Plans
+                _buildDrawerItem(
+                  context,
+                  icon: Icons.description,
+                  title: 'Treatment Plans',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, AppRoutes.treatmentPlans);
+                  },
+                ),
 
-                // Analytics (Admin only)
-                if (user?.isAdmin == true)
-                  _buildDrawerItem(
-                    context,
-                    icon: Icons.analytics,
-                    title: 'Analytics',
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.pushNamed(context, AppRoutes.analytics);
-                    },
-                  ),
-                // User Verification (Admin only)
-                if (user?.isAdmin == true)
-                  _buildDrawerItem(
-                    context,
-                    icon: Icons.verified_user,
-                    title: 'Verify Clinicians',
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.pushNamed(context, AppRoutes.userVerification);
-                    },
-                  ),
+                // Analytics
+                _buildDrawerItem(
+                  context,
+                  icon: Icons.analytics,
+                  title: 'Analytics',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, AppRoutes.analytics);
+                  },
+                ),
                 const Divider(),
 
                 // Profile
@@ -167,19 +153,5 @@ class AppDrawer extends StatelessWidget {
       title: Text(title),
       onTap: onTap,
     );
-  }
-
-  void _navigateToDashboard(BuildContext context, String role) {
-    switch (role) {
-      case 'admin':
-        Navigator.pushReplacementNamed(context, AppRoutes.adminDashboard);
-        break;
-      case 'clinician':
-        Navigator.pushReplacementNamed(context, AppRoutes.clinicianDashboard);
-        break;
-      default:
-        Navigator.pushReplacementNamed(context, AppRoutes.clinicianDashboard);
-        break;
-    }
   }
 }

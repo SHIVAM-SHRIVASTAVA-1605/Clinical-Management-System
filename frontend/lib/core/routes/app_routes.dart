@@ -3,10 +3,8 @@ class AppRoutes {
   // Auth routes
   static const String login = '/login';
   static const String register = '/register';
-  static const String userVerification = '/user-verification';
 
   // Dashboard routes
-  static const String adminDashboard = '/admin-dashboard';
   static const String clinicianDashboard = '/clinician-dashboard';
 
   // Clinician routes

@@ -6,41 +6,38 @@ class UserModel {
   final String role;
   final String? phone;
   final DateTime? createdAt;
-  final bool isVerified; // For clinician verification by admin
 
   UserModel({
     required this.id,
     required this.email,
     required this.name,
-    required this.role,
+    this.role = 'clinician',
     this.phone,
     this.createdAt,
-    this.isVerified = true, // Default true for admin and patient
   });
 
   // Create Usermodel from json
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
-      id: json['id'] ?? json['_id'] ?? '', 
-      email: json['email'] ?? '', 
-      name: json['name'] ?? '', 
-      role: json['role'] ?? 'patient',
+      id: json['id'] ?? json['_id'] ?? '',
+      email: json['email'] ?? '',
+      name: json['name'] ?? '',
+      role: json['role'] ?? 'clinician',
       phone: json['phone'],
-      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
-      isVerified: json['isVerified'] ?? true,
+      createdAt:
+          json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
     );
-}
+  }
 
 // Convert usermodel to json
-Map<String, dynamic> toJson() {
+  Map<String, dynamic> toJson() {
     return {
-      'id' : id,
-      'email' : email,
-      'name' : name,
-      'role' : role,
-      'phone' : phone,
-      'createdAt' : createdAt?.toIso8601String(),
-      'isVerified': isVerified,
+      'id': id,
+      'email': email,
+      'name': name,
+      'role': role,
+      'phone': phone,
+      'createdAt': createdAt?.toIso8601String(),
     };
   }
 
@@ -52,28 +49,17 @@ Map<String, dynamic> toJson() {
     String? role,
     String? phone,
     DateTime? createdAt,
-    bool? isVerified,
   }) {
     return UserModel(
-      id: id ?? this.id, 
-      email: email ?? this.email, 
-      name: name ?? this.name, 
+      id: id ?? this.id,
+      email: email ?? this.email,
+      name: name ?? this.name,
       role: role ?? this.role,
       phone: phone ?? this.phone,
       createdAt: createdAt ?? this.createdAt,
-      isVerified: isVerified ?? this.isVerified,
     );
   }
 
-  // checking if user is admin
-  bool get isAdmin => role == 'admin';
-
-  // or clinician
-  bool get isClinician => role == 'clinician';
-
-  // or patient
-  bool get isPatient => role == 'patient';
-  
-  // Check if pending verification (for clinicians)
-  bool get isPending => isClinician && !isVerified;
+  // App is clinician-only.
+  bool get isClinician => true;
 }

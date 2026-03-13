@@ -5,10 +5,8 @@ import 'package:frontend/features/appointments/presentations/screens/appointment
 import 'package:frontend/features/appointments/presentations/screens/book_appointment_screen.dart';
 import 'package:frontend/features/auth/presentations/screens/login_screen.dart';
 import 'package:frontend/features/auth/presentations/screens/register_screen.dart';
-import 'package:frontend/features/auth/presentations/screens/user_verification_screen.dart';
 import 'package:frontend/features/clinicians/presentation/screens/clinician_details_screen.dart';
 import 'package:frontend/features/clinicians/presentation/screens/clinicians_list_screen.dart';
-import 'package:frontend/features/dashboard/presentation/screens/admin_dashboard_screen.dart';
 import 'package:frontend/features/dashboard/presentation/screens/clinician_dashboard_screen.dart';
 import 'package:frontend/features/dashboard/presentation/screens/profile_screen.dart';
 import 'package:frontend/features/treatment_plans/presentations/screens/create_treatment_plan_screen.dart';
@@ -23,34 +21,30 @@ class RouteManager {
       // Auth routes
       case AppRoutes.login:
         return MaterialPageRoute(builder: (_) => const LoginScreen());
-      
+
       case AppRoutes.register:
         return MaterialPageRoute(builder: (_) => const RegisterScreen());
 
-      case AppRoutes.userVerification:
-        return MaterialPageRoute(builder: (_) => const UserVerificationScreen());
-
       // Dashboard routes
-      case AppRoutes.adminDashboard:
-        return MaterialPageRoute(builder: (_) => const AdminDashboardScreen());
-      
       case AppRoutes.clinicianDashboard:
-        return MaterialPageRoute(builder: (_) => const ClinicianDashboardScreen());
+        return MaterialPageRoute(
+            builder: (_) => const ClinicianDashboardScreen());
 
       case AppRoutes.clinicians:
         return MaterialPageRoute(builder: (_) => const CliniciansListScreen());
-      
+
       case AppRoutes.clinicianDetails:
         final clinicianId = settings.arguments as String?;
         if (clinicianId == null) {
           return MaterialPageRoute(builder: (_) => const _NotFoundScreen());
         }
-          return MaterialPageRoute(
+        return MaterialPageRoute(
           builder: (_) => ClinicianDetailsScreen(clinicianId: clinicianId),
         );
-      
+
       case AppRoutes.appointments:
-        return MaterialPageRoute(builder: (_) => const AppointmentsListScreen());
+        return MaterialPageRoute(
+            builder: (_) => const AppointmentsListScreen());
 
       case AppRoutes.appointmentDetails:
         final appointmentId = settings.arguments as String?;
@@ -58,17 +52,19 @@ class RouteManager {
           return MaterialPageRoute(builder: (_) => const _NotFoundScreen());
         }
         return MaterialPageRoute(
-          builder: (_) => AppointmentDetailsScreen(appointmentId: appointmentId),
+          builder: (_) =>
+              AppointmentDetailsScreen(appointmentId: appointmentId),
         );
 
-        case AppRoutes.bookAppointment:
-          return MaterialPageRoute(
-            builder: (_) => BookAppointmentScreen(),
-          );
+      case AppRoutes.bookAppointment:
+        return MaterialPageRoute(
+          builder: (_) => BookAppointmentScreen(),
+        );
 
       case AppRoutes.treatmentPlans:
-        return MaterialPageRoute(builder: (_) => const TreatmentPlansListScreen());
-      
+        return MaterialPageRoute(
+            builder: (_) => const TreatmentPlansListScreen());
+
       case AppRoutes.treatmentPlanDetails:
         final planId = settings.arguments as String?;
         if (planId == null) {
@@ -78,10 +74,10 @@ class RouteManager {
           builder: (_) => TreatmentPlanDetailsScreen(planId: planId),
         );
 
-        case AppRoutes.createTreatmentPlan:
-          return MaterialPageRoute(
-            builder: (_) => const CreateTreatmentPlanScreen(),
-          );
+      case AppRoutes.createTreatmentPlan:
+        return MaterialPageRoute(
+          builder: (_) => const CreateTreatmentPlanScreen(),
+        );
 
       case AppRoutes.analytics:
         return MaterialPageRoute(
