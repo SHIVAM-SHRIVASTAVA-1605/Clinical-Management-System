@@ -3,6 +3,7 @@ import 'package:frontend/core/constants/app_colors.dart';
 import 'package:frontend/core/routes/app_routes.dart';
 import 'package:frontend/features/auth/presentations/providers/auth_provider.dart';
 import 'package:frontend/features/appointments/presentations/provider/appointment_provider.dart';
+import 'package:frontend/features/patients/presentation/providers/patient_provider.dart';
 import 'package:frontend/features/treatment_plans/presentations/providers/treatment_plan_provider.dart';
 import 'package:frontend/features/treatment_plans/data/models/treatment_plan_model.dart';
 import 'package:frontend/features/dashboard/presentation/widgets/app_drawer.dart';
@@ -33,6 +34,8 @@ class _ClinicianDashboardScreenState extends State<ClinicianDashboardScreen> {
     if (user != null) {
       // Load appointments for this clinician
       context.read<AppointmentProvider>().fetchAppointments();
+      // Load patients for this clinician
+      context.read<PatientProvider>().fetchPatients();
       // Load treatment plans for this clinician
       context.read<TreatmentPlanProvider>().fetchTreatmentPlans();
     }
@@ -42,6 +45,7 @@ class _ClinicianDashboardScreenState extends State<ClinicianDashboardScreen> {
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
     final appointmentProvider = context.watch<AppointmentProvider>();
+    final patientProvider = context.watch<PatientProvider>();
     final treatmentPlanProvider = context.watch<TreatmentPlanProvider>();
     final user = authProvider.user;
 
@@ -62,11 +66,8 @@ class _ClinicianDashboardScreenState extends State<ClinicianDashboardScreen> {
           apt.scheduledAt.day == today.day;
     }).toList();
 
-    final uniquePatientCount = allAppointments
-        .map((a) => a.patientId)
-        .where((id) => id.isNotEmpty)
-        .toSet()
-        .length;
+    final myPatients = patientProvider.getPatientsByClinicianId(clinicianId);
+    final uniquePatientCount = myPatients.length;
 
     // Filter treatment plans created by this clinician
     final myTreatmentPlans = treatmentPlanProvider.treatmentPlans
@@ -127,7 +128,7 @@ class _ClinicianDashboardScreenState extends State<ClinicianDashboardScreen> {
                     icon: Icons.people,
                     color: AppColors.success,
                     onTap: () {
-                      Navigator.pushNamed(context, AppRoutes.appointments);
+                      Navigator.pushNamed(context, AppRoutes.patients);
                     },
                   ),
                   StatsCard(
@@ -235,16 +236,30 @@ class _ClinicianDashboardScreenState extends State<ClinicianDashboardScreen> {
               ),
               const SizedBox(height: 16),
 
-              SizedBox(
-                width: double.infinity,
-                child: _buildActionButton(
-                  context,
-                  icon: Icons.event_available,
-                  label: 'Book Appointment',
-                  onTap: () {
-                    Navigator.pushNamed(context, AppRoutes.bookAppointment);
-                  },
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildActionButton(
+                      context,
+                      icon: Icons.event_available,
+                      label: 'Book Appointment',
+                      onTap: () {
+                        Navigator.pushNamed(context, AppRoutes.bookAppointment);
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildActionButton(
+                      context,
+                      icon: Icons.person_add,
+                      label: 'Add Patient',
+                      onTap: () {
+                        Navigator.pushNamed(context, AppRoutes.addPatient);
+                      },
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

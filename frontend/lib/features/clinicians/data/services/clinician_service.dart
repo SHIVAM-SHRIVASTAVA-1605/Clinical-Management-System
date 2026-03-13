@@ -14,32 +14,7 @@ class ClinicianService {
 
   // Initialize with mock data
   void _initMockData() {
-    _mockClinicians.addAll([
-      _createMockClinician(
-        id: '1',
-        firstName: 'Emily',
-        lastName: 'Brown',
-        title: 'Dr.',
-        specialty: 'Cardiology',
-        licenseNumber: 'MD-12345',
-      ),
-      _createMockClinician(
-        id: '2',
-        firstName: 'Michael',
-        lastName: 'Johnson',
-        title: 'Dr.',
-        specialty: 'Pediatrics',
-        licenseNumber: 'MD-67890',
-      ),
-      _createMockClinician(
-        id: '3',
-        firstName: 'Sarah',
-        lastName: 'Davis',
-        title: 'Nurse',
-        specialty: 'General Practice',
-        licenseNumber: 'NP-11223',
-      ),
-    ]);
+    // Intentionally empty: no hardcoded clinician data.
   }
 
   // Get all clinicians

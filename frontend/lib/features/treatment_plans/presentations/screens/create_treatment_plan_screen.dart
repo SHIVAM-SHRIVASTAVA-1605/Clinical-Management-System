@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/core/constants/app_colors.dart';
-import 'package:frontend/features/appointments/presentations/provider/appointment_provider.dart';
 import 'package:frontend/features/auth/presentations/providers/auth_provider.dart';
+import 'package:frontend/features/patients/presentation/providers/patient_provider.dart';
 import 'package:frontend/features/treatment_plans/data/models/treatment_plan_model.dart';
 import 'package:frontend/features/treatment_plans/presentations/providers/treatment_plan_provider.dart';
 import 'package:provider/provider.dart';
@@ -38,7 +38,7 @@ class _CreateTreatmentPlanScreenState extends State<CreateTreatmentPlanScreen> {
     _selectedClinicianName = user?.name ?? 'Current Clinician';
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AppointmentProvider>().fetchAppointments();
+      context.read<PatientProvider>().fetchPatients();
     });
   }
 
@@ -105,43 +105,47 @@ class _CreateTreatmentPlanScreenState extends State<CreateTreatmentPlanScreen> {
   }
 
   Widget _buildPatientDropdown() {
-    return Consumer2<AppointmentProvider, AuthProvider>(
-      builder: (context, provider, authProvider, child) {
-        if (provider.isLoading) {
+    return Consumer2<PatientProvider, AuthProvider>(
+      builder: (context, patientProvider, authProvider, child) {
+        if (patientProvider.isLoading) {
           return const LinearProgressIndicator();
         }
 
-        final currentUser = authProvider.user;
-        final myAppointments = currentUser == null
-            ? provider.appointments
-            : provider.appointments
-                .where(
-                    (appointment) => appointment.clinicianId == currentUser.id)
-                .toList();
+        final clinicianId = authProvider.user?.id ?? '';
+        final myPatients =
+            patientProvider.getPatientsByClinicianId(clinicianId);
 
-        final patientIds = myAppointments
-            .map((appointment) => appointment.patientId)
-            .where((id) => id.isNotEmpty)
-            .toSet()
-            .toList()
-          ..sort();
+        if (myPatients.isEmpty) {
+          return InputDecorator(
+            decoration: const InputDecoration(
+              labelText: 'Patient',
+              prefixIcon: Icon(Icons.person),
+              border: OutlineInputBorder(),
+            ),
+            child: Text(
+              'No patients found. Add a patient first.',
+              style: TextStyle(color: Colors.grey[600], fontSize: 14),
+            ),
+          );
+        }
 
         return DropdownButtonFormField<String>(
           decoration: const InputDecoration(
-            labelText: 'Patient ID',
+            labelText: 'Patient',
             prefixIcon: Icon(Icons.person),
             border: OutlineInputBorder(),
           ),
           value: _selectedPatientId,
-          items: patientIds
-              .map((patientId) => DropdownMenuItem(
-                    value: patientId,
-                    child: Text(patientId),
+          hint: const Text('Select a patient'),
+          items: myPatients
+              .map((p) => DropdownMenuItem(
+                    value: p.id,
+                    child: Text('${p.name}  (${p.id})'),
                   ))
               .toList(),
           onChanged: (value) => setState(() => _selectedPatientId = value),
           validator: (value) => value == null || value.isEmpty
-              ? 'Please select a patient ID'
+              ? 'Please select a patient'
               : null,
         );
       },

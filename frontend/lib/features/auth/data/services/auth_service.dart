@@ -6,6 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 // Authentication Service for API calls.
 // TODO: Replace mock flows with backend endpoints when deployed.
 class AuthService {
+  static const String _resettableEmail = 'shivam@gmail.com';
+
   static final AuthService _instance = AuthService._internal();
   factory AuthService() => _instance;
 
@@ -24,20 +26,7 @@ class AuthService {
 
   // Initialize baseline mock users (only once)
   void _initializeMockUsers() {
-    if (_mockUsers.isNotEmpty) {
-      return;
-    }
-
-    _mockUsers.addAll([
-      UserModel(
-        id: 'clinician1',
-        email: 'dr.smith@clinic.com',
-        name: 'Dr. John Smith',
-        role: 'clinician',
-        phone: '+1234567892',
-        createdAt: DateTime.now().subtract(const Duration(days: 100)),
-      ),
-    ]);
+    // Keep empty by default; users are expected to register.
   }
 
   List<UserModel> getAllUsers() {
@@ -84,9 +73,19 @@ class AuthService {
   }) async {
     try {
       await Future.delayed(const Duration(seconds: 1));
+      final normalizedEmail = email.trim().toLowerCase();
+
+      if (normalizedEmail == _resettableEmail) {
+        final prefs = await SharedPreferences.getInstance();
+        final deletedAny = _deleteUsersByEmail(normalizedEmail);
+        if (deletedAny) {
+          await _clearSavedAuthForEmail(prefs, normalizedEmail);
+          await _persistUsers();
+        }
+      }
 
       final existingUser = _mockUsers.where(
-        (u) => u.email.toLowerCase() == email.trim().toLowerCase(),
+        (u) => u.email.toLowerCase() == normalizedEmail,
       );
       if (existingUser.isNotEmpty) {
         return {
@@ -195,13 +194,41 @@ class AuthService {
                 .map((e) => UserModel.fromJson(Map<String, dynamic>.from(e))),
           );
         _mockUsers.removeWhere((user) => user.role != 'clinician');
-        if (_mockUsers.isEmpty) {
-          _initializeMockUsers();
-        }
+        await _persistUsers();
       }
     } catch (_) {
       // Keep defaults if cached data is corrupted.
       await _persistUsers();
+    }
+  }
+
+  bool _deleteUsersByEmail(String normalizedEmail) {
+    final before = _mockUsers.length;
+    _mockUsers.removeWhere(
+      (u) => u.email.trim().toLowerCase() == normalizedEmail,
+    );
+    return before != _mockUsers.length;
+  }
+
+  Future<void> _clearSavedAuthForEmail(
+    SharedPreferences prefs,
+    String normalizedEmail,
+  ) async {
+    final rawUser = prefs.getString(_userKey);
+    if (rawUser == null || rawUser.isEmpty) {
+      return;
+    }
+
+    try {
+      final json = jsonDecode(rawUser);
+      if (json is Map) {
+        final email = (json['email'] ?? '').toString().trim().toLowerCase();
+        if (email == normalizedEmail) {
+          await _clearAuthData();
+        }
+      }
+    } catch (_) {
+      await _clearAuthData();
     }
   }
 }

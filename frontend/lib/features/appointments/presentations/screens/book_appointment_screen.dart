@@ -3,6 +3,7 @@ import 'package:frontend/core/constants/app_colors.dart';
 import 'package:frontend/features/appointments/data/models/appointment_model.dart';
 import 'package:frontend/features/appointments/presentations/provider/appointment_provider.dart';
 import 'package:frontend/features/auth/presentations/providers/auth_provider.dart';
+import 'package:frontend/features/patients/presentation/providers/patient_provider.dart';
 import 'package:provider/provider.dart';
 
 // Book appointment screen
@@ -34,6 +35,9 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     final user = context.read<AuthProvider>().user;
     _selectedClinicianId = user?.id;
     _selectedClinicianName = user?.name ?? 'Current Clinician';
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<PatientProvider>().fetchPatients();
+    });
   }
 
   @override
@@ -93,22 +97,48 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
   }
 
   Widget _buildPatientIdField() {
-    return TextFormField(
-      decoration: const InputDecoration(
-        labelText: 'Patient ID',
-        hintText: 'Enter patient ID',
-        prefixIcon: Icon(Icons.person),
-        border: OutlineInputBorder(),
-      ),
-      initialValue: _selectedPatientId,
-      onChanged: (value) {
-        _selectedPatientId = value.trim();
-      },
-      validator: (value) {
-        if (value == null || value.trim().isEmpty) {
-          return 'Please enter patient ID';
+    return Consumer2<PatientProvider, AuthProvider>(
+      builder: (context, patientProvider, authProvider, child) {
+        if (patientProvider.isLoading) {
+          return const LinearProgressIndicator();
         }
-        return null;
+
+        final clinicianId = authProvider.user?.id ?? '';
+        final myPatients =
+            patientProvider.getPatientsByClinicianId(clinicianId);
+
+        if (myPatients.isEmpty) {
+          return InputDecorator(
+            decoration: const InputDecoration(
+              labelText: 'Patient',
+              prefixIcon: Icon(Icons.person),
+              border: OutlineInputBorder(),
+            ),
+            child: Text(
+              'No patients found. Add a patient first.',
+              style: TextStyle(color: Colors.grey[600], fontSize: 14),
+            ),
+          );
+        }
+
+        return DropdownButtonFormField<String>(
+          decoration: const InputDecoration(
+            labelText: 'Patient',
+            prefixIcon: Icon(Icons.person),
+            border: OutlineInputBorder(),
+          ),
+          value: _selectedPatientId,
+          hint: const Text('Select a patient'),
+          items: myPatients
+              .map((p) => DropdownMenuItem(
+                    value: p.id,
+                    child: Text('${p.name}  (${p.id})'),
+                  ))
+              .toList(),
+          onChanged: (value) => setState(() => _selectedPatientId = value),
+          validator: (value) =>
+              value == null || value.isEmpty ? 'Please select a patient' : null,
+        );
       },
     );
   }

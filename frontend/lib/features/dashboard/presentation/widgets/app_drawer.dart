@@ -61,6 +61,17 @@ class AppDrawer extends StatelessWidget {
 
                 const Divider(),
 
+                // Add Patient
+                _buildDrawerItem(
+                  context,
+                  icon: Icons.person_add,
+                  title: 'Add Patient',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, AppRoutes.addPatient);
+                  },
+                ),
+
                 // Appointments
                 _buildDrawerItem(
                   context,
