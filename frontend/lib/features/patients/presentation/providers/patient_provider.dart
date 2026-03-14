@@ -23,7 +23,7 @@ class PatientProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _patients = _service.getAllPatients();
+      _patients = await _service.getAllPatients();
     } catch (e) {
       _errorMessage = e.toString();
     } finally {
@@ -39,7 +39,25 @@ class PatientProvider extends ChangeNotifier {
     try {
       final result = await _service.addPatient(patient);
       if (result['success'] == true) {
-        _patients = _service.getAllPatients();
+        _patients = await _service.getAllPatients();
+      }
+      return result;
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<Map<String, dynamic>> deletePatient(String id) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final result = await _service.deletePatient(id);
+      if (result['success'] == true) {
+        _patients = _patients.where((p) => p.id != id).toList();
       }
       return result;
     } catch (e) {

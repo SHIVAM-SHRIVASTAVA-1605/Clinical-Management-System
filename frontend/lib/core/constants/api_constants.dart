@@ -1,10 +1,9 @@
 class ApiConstants {
-  // this url will be updated after backend is deployed
-  static const String baseUrl = 'http://localhost:4000/api';
+  static const String baseUrl = 'http://localhost:5000/api';
 
   // Auth endpoints
-  static const String login = '/auth/login';
-  static const String register = '/auth/register';
+  static const String login = '/auth/clinician/login';
+  static const String register = '/auth/clinician/signup';
 
   // Clinician endpoints
   static const String clinicians = '/clinicians';
@@ -13,14 +12,17 @@ class ApiConstants {
 
   // Appointment endpoints
   static const String appointments = '/appointments';
-  static String appointmentsByPatient(String id) => '/appointments/patient/$id';
-  static String appointmentsByClinician(String id) => '/appointments/clinician/$id';
+  static String appointmentById(String id) => '/appointments/$id';
   static String appointmentStatus(String id) => '/appointments/$id/status';
 
   // Treatment plan endpoints
   static const String treatmentPlans = '/treatment-plans';
   static String treatmentPlansByPatient(String id) => '/treatment-plans/patient/$id';
   static String treatmentPlanById(String id) => '/treatment-plans/$id';
+
+  // Patient endpoints
+  static const String patients = '/patients';
+  static String patientById(String id) => '/patients/$id';
 
   // Analytics endpoints
   static const String analytics = '/analytics';

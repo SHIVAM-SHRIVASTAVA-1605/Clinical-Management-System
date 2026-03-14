@@ -7,7 +7,6 @@ import 'package:provider/provider.dart';
 import 'package:frontend/core/widgets/error_widget.dart' as custom;
 import 'package:intl/intl.dart';
 import 'package:file_saver/file_saver.dart';
-import 'dart:typed_data';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -42,19 +41,13 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
             icon: const Icon(Icons.file_download_outlined),
             onSelected: (value) {
               if (value == 'csv') {
-                _exportAnalytics(context, format: 'csv');
-              } else if (value == 'pdf') {
-                _exportAnalytics(context, format: 'pdf');
+                _exportAnalytics(context);
               }
             },
             itemBuilder: (context) => const [
               PopupMenuItem<String>(
                 value: 'csv',
                 child: Text('Export CSV'),
-              ),
-              PopupMenuItem<String>(
-                value: 'pdf',
-                child: Text('Export PDF'),
               ),
             ],
           ),
@@ -544,23 +537,15 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
     return '${value.substring(0, length)}...';
   }
 
-  Future<void> _exportAnalytics(BuildContext context, {required String format}) async {
+  Future<void> _exportAnalytics(BuildContext context) async {
     final provider = context.read<AnalyticsProvider>();
     final filters = provider.analyticsFilters;
     final metricType = _selectedMetricType;
 
-    Uint8List? bytes;
-    if (format == 'pdf') {
-      bytes = await provider.exportAnalyticsAsPDFBytes(
-        metricType: metricType,
-        filters: filters,
-      );
-    } else {
-      bytes = await provider.exportAnalyticsAsCSVBytes(
-        metricType: metricType,
-        filters: filters,
-      );
-    }
+    final bytes = await provider.exportAnalyticsAsCSVBytes(
+      metricType: metricType,
+      filters: filters,
+    );
 
     if (!context.mounted) return;
 
@@ -573,9 +558,9 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
 
     try {
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final ext = format == 'pdf' ? 'pdf' : 'csv';
-      final mime = format == 'pdf' ? MimeType.pdf : MimeType.csv;
-      final customMime = format == 'pdf' ? 'application/pdf' : 'text/csv';
+      const ext = 'csv';
+      const mime = MimeType.csv;
+      const customMime = 'text/csv';
       final fileName = 'clinical_analytics_$timestamp';
 
       String savedPath;
@@ -593,9 +578,9 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
 
       if (!context.mounted) return;
 
-        final message = (savedPath.toString().isNotEmpty)
-          ? '${format.toUpperCase()} saved: $savedPath'
-          : '${format.toUpperCase()} export created. Check your Downloads or Files app.';
+      final message = (savedPath.toString().isNotEmpty)
+          ? 'CSV saved: $savedPath'
+          : 'CSV export created. Check your Downloads or Files app.';
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message)),

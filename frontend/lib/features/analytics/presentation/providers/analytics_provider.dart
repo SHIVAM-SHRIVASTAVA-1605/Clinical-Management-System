@@ -58,58 +58,6 @@ class AnalyticsProvider extends ChangeNotifier {
     }
   }
 
-  // Create a new analytics record
-  Future<ClinicalAnalyticsModel?> createAnalyticsRecord({
-    required String metricType,
-    required TimeRange timeRange,
-    required dynamic value,
-    AnalyticsFilters? filters,
-  }) async {
-    _setLoading(true);
-    _clearError();
-
-    try {
-      final record = await _analyticsService.createAnalyticsRecord(
-        metricType: metricType,
-        timeRange: timeRange,
-        value: value,
-        filters: filters,
-      );
-      _clinicalAnalyticsRecords.add(record);
-      _setLoading(false);
-      return record;
-    } catch (e) {
-      _setError('Failed to create analytics record: ${e.toString()}');
-      _setLoading(false);
-      return null;
-    }
-  }
-
-  // Update an analytics record
-  Future<bool> updateAnalyticsRecord(String id, dynamic newValue) async {
-    _setLoading(true);
-    _clearError();
-
-    try {
-      final success = await _analyticsService.updateAnalyticsRecord(id, newValue);
-      if (success) {
-        // Refresh the records
-        await fetchClinicalAnalytics(
-          metricType: _selectedMetricType,
-          clinicianId: _analyticsFilters?.clinicianId,
-          location: _analyticsFilters?.location,
-          patientAgeGroup: _analyticsFilters?.patientAgeGroup,
-        );
-      }
-      _setLoading(false);
-      return success;
-    } catch (e) {
-      _setError('Failed to update analytics record: ${e.toString()}');
-      _setLoading(false);
-      return false;
-    }
-  }
-
   // Export analytics as CSV
   Future<String?> exportAnalyticsAsCSV({
     String? metricType,
@@ -149,50 +97,6 @@ class AnalyticsProvider extends ChangeNotifier {
       return bytes;
     } catch (e) {
       _setError('Failed to export analytics as CSV: ${e.toString()}');
-      _setLoading(false);
-      return null;
-    }
-  }
-
-  // Export analytics as PDF
-  Future<String?> exportAnalyticsAsPDF({
-    String? metricType,
-    AnalyticsFilters? filters,
-  }) async {
-    _setLoading(true);
-    _clearError();
-
-    try {
-      final pdfPath = await _analyticsService.exportAnalyticsAsPDF(
-        metricType: metricType,
-        filters: filters,
-      );
-      _setLoading(false);
-      return pdfPath;
-    } catch (e) {
-      _setError('Failed to export analytics as PDF: ${e.toString()}');
-      _setLoading(false);
-      return null;
-    }
-  }
-
-  // Export analytics as PDF bytes for download
-  Future<Uint8List?> exportAnalyticsAsPDFBytes({
-    String? metricType,
-    AnalyticsFilters? filters,
-  }) async {
-    _setLoading(true);
-    _clearError();
-
-    try {
-      final bytes = await _analyticsService.exportAnalyticsAsPDFBytes(
-        metricType: metricType,
-        filters: filters,
-      );
-      _setLoading(false);
-      return bytes;
-    } catch (e) {
-      _setError('Failed to export analytics as PDF: ${e.toString()}');
       _setLoading(false);
       return null;
     }

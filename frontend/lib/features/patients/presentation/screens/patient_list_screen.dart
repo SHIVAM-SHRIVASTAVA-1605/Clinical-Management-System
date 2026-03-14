@@ -96,7 +96,54 @@ class _PatientListScreenState extends State<PatientListScreen> {
                   subtitle: Text(
                     'ID: ${patient.id}  •  Age: ${patient.age}  •  ${patient.phoneNumber}',
                   ),
-                  trailing: const Icon(Icons.chevron_right),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                    tooltip: 'Delete patient',
+                    onPressed: () async {
+                      final shouldDelete = await showDialog<bool>(
+                            context: context,
+                            builder: (context) {
+                              return AlertDialog(
+                                title: const Text('Delete Patient'),
+                                content: Text(
+                                  'Are you sure you want to delete ${patient.name}?',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context, false),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context, true),
+                                    child: const Text('Delete'),
+                                  ),
+                                ],
+                              );
+                            },
+                          ) ??
+                          false;
+
+                      if (!shouldDelete || !context.mounted) return;
+
+                      final result = await context
+                          .read<PatientProvider>()
+                          .deletePatient(patient.id);
+
+                      if (!context.mounted) return;
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            result['message']?.toString() ??
+                                'Unable to delete patient.',
+                          ),
+                          backgroundColor: result['success'] == true
+                              ? AppColors.success
+                              : AppColors.error,
+                        ),
+                      );
+                    },
+                  ),
                 ),
               );
             },

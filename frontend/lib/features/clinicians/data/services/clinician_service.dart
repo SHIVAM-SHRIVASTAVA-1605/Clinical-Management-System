@@ -1,242 +1,115 @@
-import '../models/clinician_model.dart';
+import 'dart:convert';
+
 import 'package:frontend/core/constants/api_constants.dart';
+import 'package:frontend/features/auth/data/services/auth_service.dart';
+import 'package:http/http.dart' as http;
 
-// Clinician service for API calls
-// TODO: Implement actual API calls when backend is ready
+import '../models/clinician_model.dart';
+
 class ClinicianService {
-
   static final ClinicianService _instance = ClinicianService._internal();
   factory ClinicianService() => _instance;
   ClinicianService._internal();
 
-  // Mock data storage
-  final List<ClinicianModel> _mockClinicians = [];
-
-  // Initialize with mock data
-  void _initMockData() {
-    // Intentionally empty: no hardcoded clinician data.
+  Future<Map<String, String>> _authHeaders() async {
+    final token = await AuthService().getToken();
+    return {
+      'Content-Type': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
   }
 
-  // Get all clinicians
-  Future<List<ClinicianModel>> getAllClinicians() async {
-
-    // TODO: Replace with actual API call
-    
-    await Future.delayed(const Duration(milliseconds: 500)); // Simulate network delay
-    
-    if (_mockClinicians.isEmpty) {
-      _initMockData();
-    }
-    
-    return _mockClinicians;
-  }
-
-  // Get clinician by ID
-  Future<ClinicianModel?> getClinicianById(String id) async {
-    final endpoint = ApiConstants.clinicianById(id);
-    // TODO: Replace mock flow with GET endpoint call
-    
-    await Future.delayed(const Duration(milliseconds: 300));
-    
-    if (_mockClinicians.isEmpty) {
-      _initMockData();
-    }
-    
+  // POST /api/clinicians — Register a new clinician
+  Future<Map<String, dynamic>> addClinician(ClinicianModel clinician) async {
     try {
-      final clinician = _mockClinicians.firstWhere((c) => c.id == id);
-      // Keep endpoint referenced until backend integration.
-      if (endpoint.isEmpty) return null;
-      return clinician;
+      final uri = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.clinicians}');
+      final response = await http.post(
+        uri,
+        headers: await _authHeaders(),
+        body: jsonEncode(clinician.toJson()),
+      );
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final created = ClinicianModel.fromJson(
+          (data['clinician'] ?? data['data'] ?? data) as Map<String, dynamic>,
+        );
+        return {'success': true, 'message': data['message'] ?? 'Clinician registered', 'data': created.toJson()};
+      }
+      return {'success': false, 'message': data['message'] ?? 'Failed to register clinician'};
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: ${e.toString()}'};
+    }
+  }
+
+  // Alias kept for backward compatibility
+  Future<Map<String, dynamic>> registerClinician(ClinicianModel clinician) =>
+      addClinician(clinician);
+
+  // GET /api/clinicians/:id — Get clinician details by ID
+  Future<ClinicianModel?> getClinicianById(String id) async {
+    try {
+      final uri = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.clinicianById(id)}');
+      final response = await http.get(uri, headers: await _authHeaders());
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final raw = (data['clinician'] ?? data['data'] ?? data) as Map<String, dynamic>;
+        return ClinicianModel.fromJson(raw);
+      }
+      return null;
     } catch (e) {
       return null;
     }
   }
 
-  // Add new clinician
-  Future<Map<String, dynamic>> addClinician(ClinicianModel clinician) async {
-    final endpoint = ApiConstants.clinicians;
-    // TODO: Replace mock flow with POST endpoint call
-    
-    await Future.delayed(const Duration(milliseconds: 800));
-    
-    _mockClinicians.add(clinician);
-    
-    return {
-      'success': true,
-      'message': 'Clinician added successfully',
-      'endpoint': endpoint,
-      'data': clinician.toJson(),
-    };
-  }
-
-  // Update clinician
-  Future<Map<String, dynamic>> updateClinician(String id, ClinicianModel clinician) async {
-    final endpoint = ApiConstants.clinicianById(id);
-    // TODO: Replace mock flow with PUT endpoint call
-    
-    await Future.delayed(const Duration(milliseconds: 800));
-    
-    final index = _mockClinicians.indexWhere((c) => c.id == id);
-    
-    if (index != -1) {
-      _mockClinicians[index] = clinician;
-      return {
-        'success': true,
-        'message': 'Clinician updated successfully',
-        'endpoint': endpoint,
-        'data': clinician.toJson(),
-      };
-    }
-    
-    return {
-      'success': false,
-      'message': 'Clinician not found',
-    };
-  }
-
-  // Delete clinician
-  Future<Map<String, dynamic>> deleteClinician(String id) async {
-    // TODO: Replace with actual API call
-    
-    await Future.delayed(const Duration(milliseconds: 500));
-    
-    final initialLength = _mockClinicians.length;
-    _mockClinicians.removeWhere((c) => c.id == id);
-    final removed = initialLength != _mockClinicians.length;
-    
-    if (removed) {
-      return {
-        'success': true,
-        'message': 'Clinician deleted successfully',
-      };
-    }
-    
-    return {
-      'success': false,
-      'message': 'Clinician not found',
-    };
-  }
-
-  // Update clinician availability schedule
+  // PUT /api/clinicians/:id/availability — Update clinician availability schedule
   Future<Map<String, dynamic>> updateClinicianAvailability(
     String id,
     List<ClinicianAvailability> availability,
   ) async {
-    final endpoint = ApiConstants.clinicianAvailability(id);
-    // TODO: Replace mock flow with PUT endpoint call
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    final index = _mockClinicians.indexWhere((c) => c.id == id);
-    if (index != -1) {
-      final existing = _mockClinicians[index];
-      _mockClinicians[index] = ClinicianModel(
-        id: existing.id,
-        name: existing.name,
-        credentials: existing.credentials,
-        contact: existing.contact,
-        availability: availability,
-        createdAt: existing.createdAt,
-        updatedAt: DateTime.now(),
+    try {
+      final uri = Uri.parse(
+        '${ApiConstants.baseUrl}${ApiConstants.clinicianAvailability(id)}',
       );
-      return {
-        'success': true,
-        'message': 'Clinician availability updated successfully',
-        'endpoint': endpoint,
-        'data': _mockClinicians[index].toJson(),
-      };
+      final response = await http.put(
+        uri,
+        headers: await _authHeaders(),
+        body: jsonEncode({'availability': availability.map((a) => a.toJson()).toList()}),
+      );
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode == 200) {
+        return {'success': true, 'message': data['message'] ?? 'Availability updated'};
+      }
+      return {'success': false, 'message': data['message'] ?? 'Failed to update availability'};
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: ${e.toString()}'};
     }
-
-    return {
-      'success': false,
-      'message': 'Clinician not found',
-    };
   }
 
-  // Endpoint-aligned alias for clinician registration
-  Future<Map<String, dynamic>> registerClinician(ClinicianModel clinician) {
-    // POST /clinicians
-    return addClinician(clinician);
+  // --- No backend endpoint provided yet for the methods below ---
+
+  Future<List<ClinicianModel>> getAllClinicians() async {
+    // TODO: wire once GET /api/clinicians endpoint is available
+    return [];
   }
 
-  // Search clinicians
+  Future<Map<String, dynamic>> updateClinician(String id, ClinicianModel clinician) async {
+    // TODO: wire once PUT /api/clinicians/:id endpoint is available
+    return {'success': false, 'message': 'Not implemented'};
+  }
+
+  Future<Map<String, dynamic>> deleteClinician(String id) async {
+    // TODO: wire once DELETE /api/clinicians/:id endpoint is available
+    return {'success': false, 'message': 'Not implemented'};
+  }
+
   Future<List<ClinicianModel>> searchClinicians(String query) async {
-    // TODO: Replace with actual API call
-    
-    await Future.delayed(const Duration(milliseconds: 300));
-    
-    if (_mockClinicians.isEmpty) {
-      _initMockData();
-    }
-    
-    final lowerQuery = query.toLowerCase();
-    
-    return _mockClinicians.where((clinician) {
-      return clinician.name.firstName.toLowerCase().contains(lowerQuery) ||
-          clinician.name.lastName.toLowerCase().contains(lowerQuery) ||
-          clinician.credentials.specialty.toLowerCase().contains(lowerQuery);
-    }).toList();
+    // TODO: wire once search endpoint is available
+    return [];
   }
 
-  // Helper to create mock clinician
-  ClinicianModel _createMockClinician({
-    required String id,
-    required String firstName,
-    required String lastName,
-    required String title,
-    required String specialty,
-    required String licenseNumber,
-  }) {
-    return ClinicianModel(
-      id: id,
-      name: ClinicianName(
-        firstName: firstName,
-        lastName: lastName,
-        title: title,
-      ),
-      credentials: ClinicianCredentials(
-        licenseNumber: licenseNumber,
-        specialty: specialty,
-        certifications: [
-          Certification(
-            name: 'Board Certification',
-            issuedBy: 'Medical Board',
-            issueDate: DateTime(2020, 1, 1),
-          ),
-        ],
-      ),
-      contact: ClinicianContact(
-        email: '${firstName.toLowerCase()}.${lastName.toLowerCase()}@clinic.com',
-        phone: '+1-555-0${id}00',
-        officeAddress: OfficeAddress(
-          street: '123 Medical Plaza',
-          city: 'New York',
-          state: 'NY',
-          postalCode: '10001',
-          country: 'USA',
-        ),
-      ),
-      availability: [
-        ClinicianAvailability(
-          dayOfWeek: 'Monday',
-          startTime: '09:00',
-          endTime: '17:00',
-          location: 'Main Clinic',
-        ),
-        ClinicianAvailability(
-          dayOfWeek: 'Wednesday',
-          startTime: '09:00',
-          endTime: '17:00',
-          location: 'Main Clinic',
-        ),
-        ClinicianAvailability(
-          dayOfWeek: 'Friday',
-          startTime: '09:00',
-          endTime: '13:00',
-          location: 'Downtown Branch',
-        ),
-      ],
-      createdAt: DateTime.now().subtract(const Duration(days: 90)),
-      updatedAt: DateTime.now(),
-    );
-  }
 }

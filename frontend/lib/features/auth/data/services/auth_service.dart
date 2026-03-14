@@ -1,65 +1,47 @@
 import 'dart:convert';
 
+import 'package:frontend/core/constants/api_constants.dart';
 import 'package:frontend/features/auth/data/models/user_model.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-// Authentication Service for API calls.
-// TODO: Replace mock flows with backend endpoints when deployed.
 class AuthService {
   static final AuthService _instance = AuthService._internal();
   factory AuthService() => _instance;
 
-  AuthService._internal() {
-    _initializeMockUsers();
-    _restoreUsersFromStorage();
-  }
+  AuthService._internal();
 
-  // Storage keys
   static const String _tokenKey = 'auth_token';
   static const String _userKey = 'user_data';
-  static const String _usersDbKey = 'mock_users_db';
-
-  // Mock users database
-  final List<UserModel> _mockUsers = [];
-
-  // Initialize baseline mock users (only once)
-  void _initializeMockUsers() {
-    // Keep empty by default; users are expected to register.
-  }
-
-  List<UserModel> getAllUsers() {
-    return List<UserModel>.from(_mockUsers);
-  }
 
   Future<Map<String, dynamic>> login({
     required String email,
     required String password,
   }) async {
     try {
-      await Future.delayed(const Duration(seconds: 1));
-
-      final user = _mockUsers.firstWhere(
-        (u) => u.email.toLowerCase() == email.trim().toLowerCase(),
-        orElse: () => throw Exception('User not found'),
+      final uri = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.login}');
+      final response = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email.trim(), 'password': password}),
       );
 
-      final mockResponse = {
-        'success': true,
-        'token': 'mock_token_${user.id}',
-        'user': user.toJson(),
-      };
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
 
-      await _saveAuthData(
-        mockResponse['token'] as String,
-        mockResponse['user'] as Map<String, dynamic>,
-      );
-
-      return mockResponse;
-    } catch (_) {
-      return {
-        'success': false,
-        'message': 'Invalid email or password',
-      };
+      if (response.statusCode == 200) {
+        final token = data['token'] as String;
+        final rawUser = (data['user'] ?? data['clinician'] ?? data) as Map;
+        final userData = Map<String, dynamic>.from(rawUser);
+        await _saveAuthData(token, userData);
+        return {'success': true, 'token': token, 'user': userData};
+      } else {
+        return {
+          'success': false,
+          'message': data['message'] ?? 'Invalid email or password',
+        };
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: ${e.toString()}'};
     }
   }
 
@@ -70,44 +52,41 @@ class AuthService {
     String? phone,
   }) async {
     try {
-      await Future.delayed(const Duration(seconds: 1));
-      final normalizedEmail = email.trim().toLowerCase();
+      final uri = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.register}');
+      final body = <String, dynamic>{
+        'name': name,
+        'email': email.trim(),
+        'password': password,
+        if (phone != null && phone.isNotEmpty) 'phone': phone,
+      };
 
-      final existingUser = _mockUsers.where(
-        (u) => u.email.toLowerCase() == normalizedEmail,
+      final response = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(body),
       );
-      if (existingUser.isNotEmpty) {
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final token = data['token'] as String;
+        final rawUser = (data['user'] ?? data['clinician'] ?? data) as Map;
+        final userData = Map<String, dynamic>.from(rawUser);
+        await _saveAuthData(token, userData);
+        return {
+          'success': true,
+          'message': data['message'] ?? 'Registration successful!',
+          'token': token,
+          'user': userData,
+        };
+      } else {
         return {
           'success': false,
-          'message': 'Email already registered',
+          'message': data['message'] ?? 'Registration failed',
         };
       }
-
-      final newUser = UserModel(
-        id: 'user_${DateTime.now().millisecondsSinceEpoch}',
-        email: email.trim(),
-        name: name,
-        phone: phone,
-        createdAt: DateTime.now(),
-      );
-
-      _mockUsers.add(newUser);
-      await _persistUsers();
-
-      final token = 'mock_token_${newUser.id}';
-      await _saveAuthData(token, newUser.toJson());
-
-      return {
-        'success': true,
-        'message': 'Registration successful!',
-        'token': token,
-        'user': newUser.toJson(),
-      };
     } catch (e) {
-      return {
-        'success': false,
-        'message': 'Registration failed: ${e.toString()}',
-      };
+      return {'success': false, 'message': 'Network error: ${e.toString()}'};
     }
   }
 
@@ -124,17 +103,10 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     final userJson = prefs.getString(_userKey);
 
-    if (userJson == null || userJson.isEmpty) {
-      return null;
-    }
+    if (userJson == null || userJson.isEmpty) return null;
 
     final userData = jsonDecode(userJson) as Map<String, dynamic>;
-    final user = UserModel.fromJson(userData);
-    if (user.role != 'clinician') {
-      await _clearAuthData();
-      return null;
-    }
-    return user;
+    return UserModel.fromJson(userData);
   }
 
   Future<bool> isLoggedIn() async {
@@ -155,39 +127,5 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
     await prefs.remove(_userKey);
-  }
-
-  Future<void> _persistUsers() async {
-    final prefs = await SharedPreferences.getInstance();
-    final usersPayload = _mockUsers.map((user) => user.toJson()).toList();
-    await prefs.setString(_usersDbKey, jsonEncode(usersPayload));
-  }
-
-  Future<void> _restoreUsersFromStorage() async {
-    final prefs = await SharedPreferences.getInstance();
-    final usersRaw = prefs.getString(_usersDbKey);
-
-    if (usersRaw == null || usersRaw.isEmpty) {
-      await _persistUsers();
-      return;
-    }
-
-    try {
-      final decoded = jsonDecode(usersRaw);
-      if (decoded is List) {
-        _mockUsers
-          ..clear()
-          ..addAll(
-            decoded
-                .whereType<Map>()
-                .map((e) => UserModel.fromJson(Map<String, dynamic>.from(e))),
-          );
-        _mockUsers.removeWhere((user) => user.role != 'clinician');
-        await _persistUsers();
-      }
-    } catch (_) {
-      // Keep defaults if cached data is corrupted.
-      await _persistUsers();
-    }
   }
 }
