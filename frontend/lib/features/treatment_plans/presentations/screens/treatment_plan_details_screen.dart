@@ -37,24 +37,16 @@ class _TreatmentPlanDetailsScreenState
       appBar: AppBar(
         title: const Text('Treatment Plan Details'),
         actions: [
-          PopupMenuButton<String>(
-            onSelected: (value) {
-              if (value == 'delete') {
-                _showDeleteConfirmation();
+          IconButton(
+            icon: const Icon(Icons.edit),
+            tooltip: 'Update treatment plan',
+            onPressed: () {
+              final plan =
+                  context.read<TreatmentPlanProvider>().selectedTreatmentPlan;
+              if (plan != null) {
+                _showUpdateDialog(plan);
               }
             },
-            itemBuilder: (context) => const [
-              PopupMenuItem(
-                value: 'delete',
-                child: Row(
-                  children: [
-                    Icon(Icons.delete, color: AppColors.error),
-                    SizedBox(width: 8),
-                    Text('Delete'),
-                  ],
-                ),
-              ),
-            ],
           ),
         ],
       ),
@@ -553,60 +545,120 @@ class _TreatmentPlanDetailsScreenState
     return '${date.day}/${date.month}/${date.year}';
   }
 
-  void _showDeleteConfirmation() {
+  void _showUpdateDialog(TreatmentPlanModel plan) {
+    final conditionController = TextEditingController(
+      text: plan.diagnosis.condition,
+    );
+    final icdController = TextEditingController(text: plan.diagnosis.icd10Code);
+    DateTime diagnosedAt = plan.diagnosis.diagnosedAt;
+
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete Treatment Plan'),
-        content: const Text(
-          'Are you sure you want to delete this treatment plan? This action cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(dialogContext);
-
-              if (!mounted) {
-                return;
-              }
-
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (_) =>
-                    const Center(child: CircularProgressIndicator()),
-              );
-
-              final provider = context.read<TreatmentPlanProvider>();
-              final success = await provider.deleteTreatmentPlan(widget.planId);
-
-              if (!mounted) {
-                return;
-              }
-
-              Navigator.pop(context);
-              Navigator.pop(context);
-
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    success
-                        ? 'Treatment plan deleted successfully'
-                        : provider.errorMessage ?? 'Failed to delete',
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Update Treatment Plan'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: conditionController,
+                  decoration: const InputDecoration(
+                    labelText: 'Condition',
+                    border: OutlineInputBorder(),
                   ),
-                  backgroundColor:
-                      success ? AppColors.success : AppColors.error,
                 ),
-              );
-            },
-            style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: const Text('Delete'),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: icdController,
+                  decoration: const InputDecoration(
+                    labelText: 'ICD-10 Code',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                InkWell(
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: diagnosedAt,
+                      firstDate: DateTime.now().subtract(
+                        const Duration(days: 3650),
+                      ),
+                      lastDate: DateTime.now(),
+                    );
+                    if (picked != null) {
+                      setDialogState(() => diagnosedAt = picked);
+                    }
+                  },
+                  child: InputDecorator(
+                    decoration: const InputDecoration(
+                      labelText: 'Diagnosed At',
+                      border: OutlineInputBorder(),
+                    ),
+                    child: Text(_formatDate(diagnosedAt)),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final condition = conditionController.text.trim();
+                final icd = icdController.text.trim();
+
+                if (condition.isEmpty || icd.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Condition and ICD-10 code are required'),
+                      backgroundColor: AppColors.error,
+                    ),
+                  );
+                  return;
+                }
+
+                Navigator.pop(dialogContext);
+
+                final updatedPlan = plan.copyWith(
+                  diagnosis: Diagnosis(
+                    condition: condition,
+                    diagnosedAt: diagnosedAt,
+                    icd10Code: icd,
+                  ),
+                  updatedAt: DateTime.now(),
+                );
+
+                final provider = context.read<TreatmentPlanProvider>();
+                final success = await provider.updateTreatmentPlan(
+                  widget.planId,
+                  updatedPlan,
+                );
+
+                if (!mounted) return;
+
+                await provider.fetchTreatmentPlanById(widget.planId);
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      success
+                          ? 'Treatment plan updated successfully'
+                          : provider.errorMessage ?? 'Failed to update treatment plan',
+                    ),
+                    backgroundColor:
+                        success ? AppColors.success : AppColors.error,
+                  ),
+                );
+              },
+              child: const Text('Update'),
+            ),
+          ],
+        ),
       ),
     );
   }

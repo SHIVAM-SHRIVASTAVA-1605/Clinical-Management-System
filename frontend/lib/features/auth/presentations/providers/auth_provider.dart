@@ -49,9 +49,10 @@ class AuthProvider extends ChangeNotifier {
 
   // register method - returns full response map
   Future<Map<String, dynamic>> register({
-    required String name,
+    required String fullName,
     required String email,
     required String password,
+    required String confirmPassword,
     String? phone,
   }) async {
     _setLoading(true);
@@ -59,9 +60,10 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       final response = await _authService.register(
-        name: name,
+        fullName: fullName,
         email: email,
         password: password,
+        confirmPassword: confirmPassword,
         phone: phone,
       );
 

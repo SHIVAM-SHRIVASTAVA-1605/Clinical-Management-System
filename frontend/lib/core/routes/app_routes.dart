@@ -10,6 +10,7 @@ class AppRoutes {
   // Patient routes
   static const String patients = '/patients';
   static const String addPatient = '/add-patient';
+  static const String editPatient = '/edit-patient';
 
   // Appointments routes
   static const String appointments = '/appointments';

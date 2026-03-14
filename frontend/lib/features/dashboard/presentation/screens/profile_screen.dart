@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:frontend/core/constants/app_colors.dart';
 import 'package:frontend/core/routes/app_routes.dart';
 import 'package:frontend/features/auth/presentations/providers/auth_provider.dart';
+import 'package:frontend/features/clinicians/data/models/clinician_model.dart';
+import 'package:frontend/features/clinicians/presentation/providers/clinician_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 
@@ -205,82 +207,69 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
 
-                  // Edit Profile Button
+                  // View clinician details from backend
                   _buildActionButton(
                     context,
-                    icon: Icons.edit_outlined,
-                    label: 'Edit Profile',
-                    subtitle: 'Update your personal information',
+                    icon: Icons.badge_outlined,
+                    label: 'View Clinician Details',
+                    subtitle: 'View your details',
                     color: AppColors.primary,
-                    onTap: () {
-                      // TODO: Implement edit profile
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Edit profile feature coming soon!'),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Change Password Button
-                  _buildActionButton(
-                    context,
-                    icon: Icons.lock_outlined,
-                    label: 'Change Password',
-                    subtitle: 'Update your account password',
-                    color: AppColors.warning,
-                    onTap: () {
-                      // TODO: Implement change password
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Change password feature coming soon!'),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Delete Account Button
-                  _buildActionButton(
-                    context,
-                    icon: Icons.delete_outline,
-                    label: 'Delete Account',
-                    subtitle: 'Permanently delete your account',
-                    color: Colors.red,
                     onTap: () async {
-                      final confirmed = await showDialog<bool>(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                          title: const Text('Delete Account'),
-                          content: const Text(
-                            'Are you sure you want to delete your account? This action cannot be undone.',
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context, false),
-                              child: const Text('Cancel'),
-                            ),
-                            TextButton(
-                              onPressed: () => Navigator.pop(context, true),
-                              style: TextButton.styleFrom(
-                                foregroundColor: Colors.red,
-                              ),
-                              child: const Text('Delete'),
-                            ),
-                          ],
-                        ),
-                      );
+                      final clinicianProvider = context.read<ClinicianProvider>();
+                      await clinicianProvider.fetchClinicianById(user.id);
 
-                      if (confirmed == true && context.mounted) {
-                        // TODO: Implement account deletion
+                      if (!context.mounted) return;
+
+                      final clinician = clinicianProvider.selectedClinician;
+                      if (clinician == null) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content:
-                                Text('Account deletion feature coming soon!'),
+                          SnackBar(
+                            content: Text(
+                              clinicianProvider.errorMessage ??
+                                  'Unable to load clinician details',
+                            ),
+                            backgroundColor: AppColors.error,
                           ),
                         );
+                        return;
                       }
+
+                      _showClinicianDetailsDialog(context, clinician);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Update availability schedule
+                  _buildActionButton(
+                    context,
+                    icon: Icons.schedule,
+                    label: 'Update Availability',
+                    subtitle: 'Update you availability slots',
+                    color: AppColors.warning,
+                    onTap: () async {
+                      final clinicianProvider = context.read<ClinicianProvider>();
+                      final currentlyLoaded = clinicianProvider.selectedClinician;
+                      if (currentlyLoaded == null || currentlyLoaded.id != user.id) {
+                        await clinicianProvider.fetchClinicianById(user.id);
+                      }
+
+                      if (!context.mounted) return;
+
+                      final clinician = clinicianProvider.selectedClinician;
+                      if (clinician == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              clinicianProvider.errorMessage ??
+                                  'Unable to load clinician details',
+                            ),
+                            backgroundColor: AppColors.error,
+                          ),
+                        );
+                        return;
+                      }
+
+                      await _showUpdateAvailabilityDialog(context, clinician);
                     },
                   ),
                   const SizedBox(height: 32),
@@ -347,6 +336,298 @@ class ProfileScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  void _showClinicianDetailsDialog(
+    BuildContext context,
+    ClinicianModel clinician,
+  ) {
+    final specialty = clinician.credentials.specialty.trim().isEmpty
+        ? 'Not set'
+        : clinician.credentials.specialty;
+    final license = clinician.credentials.licenseNumber.trim().isEmpty
+        ? 'Not set'
+        : clinician.credentials.licenseNumber;
+    final email = clinician.contact.email.trim().isEmpty
+        ? 'Not set'
+        : clinician.contact.email;
+    final phone = clinician.contact.phone.trim().isEmpty
+        ? 'Not set'
+        : clinician.contact.phone;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Clinician Details'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Name: ${clinician.fullName}'),
+              const SizedBox(height: 8),
+              Text('Email: $email'),
+              const SizedBox(height: 8),
+              Text('Phone: $phone'),
+              const SizedBox(height: 8),
+              Text('Specialty: $specialty'),
+              const SizedBox(height: 8),
+              Text('License: $license'),
+              const SizedBox(height: 12),
+              Text(
+                'Availability (${clinician.availability.length})',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              if (clinician.availability.isEmpty)
+                const Text('No availability slots configured')
+              else
+                ...clinician.availability.map(
+                  (slot) => Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Text(
+                      '${slot.dayOfWeek}: ${slot.startTime} - ${slot.endTime} (${slot.location})',
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showUpdateAvailabilityDialog(
+    BuildContext context,
+    ClinicianModel clinician,
+  ) async {
+    final availabilityDraft = clinician.availability
+        .map(
+          (slot) => ClinicianAvailability(
+            dayOfWeek: slot.dayOfWeek,
+            startTime: slot.startTime,
+            endTime: slot.endTime,
+            location: slot.location,
+          ),
+        )
+        .toList();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Update Availability'),
+          content: SizedBox(
+            width: 520,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (availabilityDraft.isEmpty)
+                    const Text('No availability slots yet. Add one below.')
+                  else
+                    ...availabilityDraft.asMap().entries.map(
+                      (entry) {
+                        final index = entry.key;
+                        final slot = entry.value;
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          child: ListTile(
+                            title: Text(
+                              '${slot.dayOfWeek}: ${slot.startTime} - ${slot.endTime}',
+                            ),
+                            subtitle: Text(slot.location),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.edit_outlined),
+                                  tooltip: 'Edit slot',
+                                  onPressed: () async {
+                                    final edited = await _showAvailabilitySlotEditor(
+                                      context,
+                                      initial: slot,
+                                    );
+                                    if (edited == null) return;
+                                    setDialogState(() {
+                                      availabilityDraft[index] = edited;
+                                    });
+                                  },
+                                ),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.delete_outline,
+                                    color: AppColors.error,
+                                  ),
+                                  tooltip: 'Delete slot',
+                                  onPressed: () {
+                                    setDialogState(() {
+                                      availabilityDraft.removeAt(index);
+                                    });
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      final created = await _showAvailabilitySlotEditor(
+                        context,
+                      );
+                      if (created == null) return;
+                      setDialogState(() {
+                        availabilityDraft.add(created);
+                      });
+                    },
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add Availability Slot'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Update'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final result = await context
+        .read<ClinicianProvider>()
+        .updateClinicianAvailability(clinician.id, availabilityDraft);
+
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          result['message']?.toString() ?? 'Availability updated',
+        ),
+        backgroundColor:
+            result['success'] == true ? AppColors.success : AppColors.error,
+      ),
+    );
+  }
+
+  Future<ClinicianAvailability?> _showAvailabilitySlotEditor(
+    BuildContext context, {
+    ClinicianAvailability? initial,
+  }) async {
+    final dayController = TextEditingController(
+      text: initial?.dayOfWeek ?? 'Monday',
+    );
+    final startController = TextEditingController(
+      text: initial?.startTime ?? '09:00',
+    );
+    final endController = TextEditingController(
+      text: initial?.endTime ?? '17:00',
+    );
+    final locationController = TextEditingController(
+      text: initial?.location ?? 'Main Clinic',
+    );
+
+    final result = await showDialog<ClinicianAvailability>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(initial == null ? 'Add Availability Slot' : 'Edit Slot'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: dayController,
+                decoration: const InputDecoration(
+                  labelText: 'Day of week',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: startController,
+                decoration: const InputDecoration(
+                  labelText: 'Start time (HH:mm)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: endController,
+                decoration: const InputDecoration(
+                  labelText: 'End time (HH:mm)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: locationController,
+                decoration: const InputDecoration(
+                  labelText: 'Location',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final day = dayController.text.trim();
+              final start = startController.text.trim();
+              final end = endController.text.trim();
+              final location = locationController.text.trim();
+
+              if (day.isEmpty || start.isEmpty || end.isEmpty || location.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('All availability fields are required'),
+                    backgroundColor: AppColors.error,
+                  ),
+                );
+                return;
+              }
+
+              Navigator.pop(
+                dialogContext,
+                ClinicianAvailability(
+                  dayOfWeek: day,
+                  startTime: start,
+                  endTime: end,
+                  location: location,
+                ),
+              );
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    return result;
   }
 
   Widget _buildActionButton(

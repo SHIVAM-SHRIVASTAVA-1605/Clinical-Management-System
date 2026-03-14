@@ -19,11 +19,30 @@ class ClinicianModel {
 
   // from json
   factory ClinicianModel.fromJson(Map<String, dynamic> json) {
+    final fullName = (json['fullName'] ?? '').toString().trim();
+    final nameJson = (json['name'] as Map<String, dynamic>?) ?? <String, dynamic>{};
+    final split = fullName.isEmpty ? <String>[] : fullName.split(RegExp(r'\s+'));
+    final inferredFirstName = split.isNotEmpty ? split.first : '';
+    final inferredLastName = split.length > 1 ? split.sublist(1).join(' ') : '';
+
+    final mergedName = <String, dynamic>{
+      'firstName': nameJson['firstName'] ?? inferredFirstName,
+      'lastName': nameJson['lastName'] ?? inferredLastName,
+      'title': nameJson['title'] ?? '',
+    };
+
+    final contactJson = (json['contact'] as Map<String, dynamic>?) ?? <String, dynamic>{};
+    final mergedContact = <String, dynamic>{
+      'email': contactJson['email'] ?? json['email'] ?? '',
+      'phone': contactJson['phone'] ?? json['phone'] ?? '',
+      'officeAddress': contactJson['officeAddress'] ?? <String, dynamic>{},
+    };
+
     return ClinicianModel(
       id: json['id'] ?? json['_id'] ?? '', 
-      name: ClinicianName.fromJson(json['name'] ?? {}), 
+      name: ClinicianName.fromJson(mergedName), 
       credentials: ClinicianCredentials.fromJson(json['credentials'] ?? {}), 
-      contact: ClinicianContact.fromJson(json['contact'] ?? {}), 
+      contact: ClinicianContact.fromJson(mergedContact), 
       availability: (json['availability'] as List<dynamic>?)
         ?.map((e) => ClinicianAvailability.fromJson(e))
         .toList() ?? [],
@@ -46,7 +65,12 @@ class ClinicianModel {
   }
 
   // Full name helper
-  String get fullName => '${name.title} ${name.firstName} ${name.lastName}';
+  String get fullName {
+    final value = '${name.title} ${name.firstName} ${name.lastName}'
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    return value.isEmpty ? 'Clinician' : value;
+  }
 }
 
 // Name structure

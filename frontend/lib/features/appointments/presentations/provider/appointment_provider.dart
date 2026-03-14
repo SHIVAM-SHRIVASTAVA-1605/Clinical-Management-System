@@ -225,11 +225,6 @@ class AppointmentProvider extends ChangeNotifier {
     return await updateAppointmentStatus(id, AppointmentStatus.completed);
   }
 
-  // Confirm appointment
-  Future<bool> confirmAppointment(String id) async {
-    return await updateAppointmentStatus(id, AppointmentStatus.confirmed);
-  }
-
   // Delete appointment
   Future<bool> deleteAppointment(String id) async {
     _setLoading(true);

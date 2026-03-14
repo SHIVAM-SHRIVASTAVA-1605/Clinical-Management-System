@@ -118,25 +118,6 @@ class TreatmentPlanService {
     };
   }
 
-  Future<Map<String, dynamic>> deleteTreatmentPlan(String id) async {
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    final initialLength = _mockTreatmentPlans.length;
-    _mockTreatmentPlans.removeWhere((t) => t.id == id);
-
-    if (initialLength == _mockTreatmentPlans.length) {
-      return {
-        'success': false,
-        'message': 'Treatment plan not found',
-      };
-    }
-
-    return {
-      'success': true,
-      'message': 'Treatment plan deleted successfully',
-    };
-  }
-
   // Endpoint-aligned alias: POST /treatment-plans
   Future<Map<String, dynamic>> createTreatmentPlan(
     TreatmentPlanModel treatmentPlan,

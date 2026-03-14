@@ -35,10 +35,20 @@ class AppointmentModel {
   });
 
   factory AppointmentModel.fromJson(Map<String, dynamic> json) {
+    final rawPatient = json['patientId'] ?? json['patient'];
+    final rawClinician = json['clinicianId'] ?? json['clinician'];
+
+    String parseId(dynamic value) {
+      if (value is Map<String, dynamic>) {
+        return (value['id'] ?? value['_id'] ?? '').toString();
+      }
+      return (value ?? '').toString();
+    }
+
     return AppointmentModel(
       id: json['id'] ?? json['_id'] ?? '',
-      patientId: json['patientId'] ?? '',
-      clinicianId: json['clinicianId'] ?? '',
+      patientId: parseId(rawPatient),
+      clinicianId: parseId(rawClinician),
       appointmentType: json['appointmentType'] ?? AppointmentType.consultation,
       status: json['status'] ?? AppointmentStatus.scheduled,
       scheduledAt: json['scheduledAt'] != null
@@ -164,8 +174,13 @@ class BillingInfo {
   });
 
   factory BillingInfo.fromJson(Map<String, dynamic> json) {
+    final rawAmount = json['amount'];
+    final parsedAmount = rawAmount is num
+        ? rawAmount.toDouble()
+        : double.tryParse('$rawAmount') ?? 0;
+
     return BillingInfo(
-      amount: (json['amount'] ?? 0).toDouble(),
+      amount: parsedAmount,
       status: json['status'] ?? BillingStatus.pending,
       insuranceDetails: json['insuranceDetails'] != null
           ? InsuranceDetails.fromJson(json['insuranceDetails'])
@@ -256,14 +271,12 @@ class BillingStatus {
 
 class AppointmentLocation {
   static const String mainClinic = 'Main Clinic';
-  static const String downtownBranch = 'Downtown Branch';
+  static const String branchClinic = 'Branch Clinic';
   static const String telehealth = 'Telehealth';
-  static const String homeVisit = 'Home Visit';
 
   static List<String> get all => [
         mainClinic,
-        downtownBranch,
+        branchClinic,
         telehealth,
-        homeVisit,
       ];
 }

@@ -32,7 +32,7 @@ class AppDrawer extends StatelessWidget {
             currentAccountPicture: CircleAvatar(
               backgroundColor: AppColors.white,
               child: Text(
-                user?.name.substring(0, 1).toUpperCase() ?? 'U',
+                (user?.name.isNotEmpty == true) ? user!.name.substring(0,1).toUpperCase() : 'U',
                 style: const TextStyle(
                   fontSize: 32,
                   color: AppColors.primary,

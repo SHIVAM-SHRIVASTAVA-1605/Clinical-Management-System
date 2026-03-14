@@ -34,6 +34,12 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final selectedAppointment =
+        context.watch<AppointmentProvider>().selectedAppointment;
+    final currentStatus = selectedAppointment?.status.trim().toLowerCase();
+    final canMarkComplete =
+        currentStatus != 'completed' && currentStatus != 'cancelled';
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Appointment Details'),
@@ -50,48 +56,48 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
           ),
           PopupMenuButton<String>(
             onSelected: (value) => _handleMenuAction(value),
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'confirm',
-                child: Row(
-                  children: [
-                    Icon(Icons.check_circle, color: AppColors.success),
-                    SizedBox(width: 8),
-                    Text('Confirm'),
-                  ],
+            itemBuilder: (context) {
+              final items = <PopupMenuEntry<String>>[];
+              if (canMarkComplete) {
+                items.add(
+                  const PopupMenuItem(
+                    value: 'complete',
+                    child: Row(
+                      children: [
+                        Icon(Icons.done_all, color: AppColors.primary),
+                        SizedBox(width: 8),
+                        Text('Mark Complete'),
+                      ],
+                    ),
+                  ),
+                );
+                items.add(
+                  const PopupMenuItem(
+                    value: 'cancel',
+                    child: Row(
+                      children: [
+                        Icon(Icons.cancel, color: AppColors.warning),
+                        SizedBox(width: 8),
+                        Text('Cancel'),
+                      ],
+                    ),
+                  ),
+                );
+              }
+              items.add(
+                const PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete, color: AppColors.error),
+                      SizedBox(width: 8),
+                      Text('Delete'),
+                    ],
+                  ),
                 ),
-              ),
-              const PopupMenuItem(
-                value: 'complete',
-                child: Row(
-                  children: [
-                    Icon(Icons.done_all, color: AppColors.primary),
-                    SizedBox(width: 8),
-                    Text('Mark Complete'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'cancel',
-                child: Row(
-                  children: [
-                    Icon(Icons.cancel, color: AppColors.warning),
-                    SizedBox(width: 8),
-                    Text('Cancel'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'delete',
-                child: Row(
-                  children: [
-                    Icon(Icons.delete, color: AppColors.error),
-                    SizedBox(width: 8),
-                    Text('Delete'),
-                  ],
-                ),
-              ),
-            ],
+              );
+              return items;
+            },
           ),
         ],
       ),
@@ -770,13 +776,14 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
     String message = '';
 
     switch (action) {
-      case 'confirm':
-        success = await provider.confirmAppointment(widget.appointmentId);
-        message = success ? 'Appointment confirmed' : 'Failed to confirm';
-        break;
       case 'complete':
         success = await provider.completeAppointment(widget.appointmentId);
-        message = success ? 'Appointment completed' : 'Failed to complete';
+        message = success
+            ? 'Appointment completed'
+          : ((provider.errorMessage != null &&
+                provider.errorMessage!.trim().isNotEmpty)
+              ? provider.errorMessage!
+              : 'Failed to complete');
         break;
       case 'cancel':
         success = await _showCancelConfirmation();
@@ -824,7 +831,10 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
                       SnackBar(
                         content: Text(success
                             ? 'Appointment cancelled'
-                            : 'Failed to cancel'),
+                            : ((provider.errorMessage != null &&
+                                        provider.errorMessage!.trim().isNotEmpty)
+                                    ? provider.errorMessage!
+                                    : 'Failed to cancel')),
                         backgroundColor:
                             success ? AppColors.success : AppColors.error,
                       ),
@@ -876,7 +886,10 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
                   SnackBar(
                     content: Text(success
                         ? 'Appointment deleted successfully'
-                        : provider.errorMessage ?? 'Failed to delete'),
+                        : ((provider.errorMessage != null &&
+                                    provider.errorMessage!.trim().isNotEmpty)
+                                ? provider.errorMessage!
+                                : 'Failed to delete appointment')),
                     backgroundColor:
                         success ? AppColors.success : AppColors.error,
                   ),

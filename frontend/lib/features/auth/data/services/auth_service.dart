@@ -19,7 +19,9 @@ class AuthService {
     required String password,
   }) async {
     try {
-      final uri = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.login}');
+      final uri = Uri.parse(
+        '${ApiConstants.authBaseUrl}${ApiConstants.login}',
+      );
       final response = await http.post(
         uri,
         headers: {'Content-Type': 'application/json'},
@@ -46,17 +48,21 @@ class AuthService {
   }
 
   Future<Map<String, dynamic>> register({
-    required String name,
+    required String fullName,
     required String email,
     required String password,
+    required String confirmPassword,
     String? phone,
   }) async {
     try {
-      final uri = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.register}');
+      final uri = Uri.parse(
+        '${ApiConstants.authBaseUrl}${ApiConstants.register}',
+      );
       final body = <String, dynamic>{
-        'name': name,
+        'fullName': fullName,
         'email': email.trim(),
         'password': password,
+        'confirmPassword': confirmPassword,
         if (phone != null && phone.isNotEmpty) 'phone': phone,
       };
 

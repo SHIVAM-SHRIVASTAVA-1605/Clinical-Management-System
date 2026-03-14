@@ -95,6 +95,40 @@ class ClinicianProvider extends ChangeNotifier {
     }
   }
 
+  Future<Map<String, dynamic>> updateClinicianAvailability(
+    String id,
+    List<ClinicianAvailability> availability,
+  ) async {
+    _setLoading(true);
+    _clearError();
+
+    try {
+      final response = await _clinicianService.updateClinicianAvailability(
+        id,
+        availability,
+      );
+
+      if (response['success'] == true) {
+        await fetchClinicianById(id);
+        _setLoading(false);
+        return {
+          'success': true,
+          'message': response['message'] ?? 'Availability updated',
+        };
+      }
+
+      final message = response['message'] ?? 'Failed to update availability';
+      _setError(message);
+      _setLoading(false);
+      return {'success': false, 'message': message};
+    } catch (e) {
+      final message = 'Failed to update availability: ${e.toString()}';
+      _setError(message);
+      _setLoading(false);
+      return {'success': false, 'message': message};
+    }
+  }
+
   // Delete clinician
   Future<bool> deleteClinician(String id) async {
     _setLoading(true);

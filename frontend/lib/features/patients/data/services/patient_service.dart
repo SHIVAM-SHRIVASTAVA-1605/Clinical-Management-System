@@ -103,7 +103,7 @@ class PatientService {
 
       return {
         'success': false,
-        'message': body['message'] ?? 'Failed to create patient.',
+        'message': body['message'] ?? body['error'] ?? 'Failed to create patient. (status ${response.statusCode})',
       };
     } catch (e) {
       return {

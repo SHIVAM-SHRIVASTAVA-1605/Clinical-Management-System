@@ -8,7 +8,9 @@ import 'package:frontend/features/auth/presentations/screens/register_screen.dar
 import 'package:frontend/features/dashboard/presentation/screens/clinician_dashboard_screen.dart';
 import 'package:frontend/features/dashboard/presentation/screens/profile_screen.dart';
 import 'package:frontend/features/patients/presentation/screens/add_patient_screen.dart';
+import 'package:frontend/features/patients/presentation/screens/edit_patient_screen.dart';
 import 'package:frontend/features/patients/presentation/screens/patient_list_screen.dart';
+import 'package:frontend/features/patients/data/models/patient_model.dart';
 import 'package:frontend/features/treatment_plans/presentations/screens/create_treatment_plan_screen.dart';
 import 'package:frontend/features/treatment_plans/presentations/screens/treatment_plan_details_screen.dart';
 import 'package:frontend/features/treatment_plans/presentations/screens/treatment_plans_list_screen.dart';
@@ -36,6 +38,15 @@ class RouteManager {
       case AppRoutes.addPatient:
         return MaterialPageRoute(builder: (_) => const AddPatientScreen());
 
+      case AppRoutes.editPatient:
+        final patient = settings.arguments as PatientModel?;
+        if (patient == null) {
+          return MaterialPageRoute(builder: (_) => const _NotFoundScreen());
+        }
+        return MaterialPageRoute(
+          builder: (_) => EditPatientScreen(patient: patient),
+        );
+
       case AppRoutes.appointments:
         return MaterialPageRoute(
             builder: (_) => const AppointmentsListScreen());
@@ -52,7 +63,7 @@ class RouteManager {
 
       case AppRoutes.bookAppointment:
         return MaterialPageRoute(
-          builder: (_) => BookAppointmentScreen(),
+          builder: (_) => const BookAppointmentScreen(),
         );
 
       case AppRoutes.treatmentPlans:

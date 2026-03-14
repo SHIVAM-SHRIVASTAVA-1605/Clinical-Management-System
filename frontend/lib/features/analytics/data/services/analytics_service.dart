@@ -19,165 +19,138 @@ class AnalyticsService {
     };
   }
 
-  List<ClinicalAnalyticsModel> _parseAnalyticsList(dynamic payload) {
-    if (payload is List) {
-      return payload
-          .map((e) => ClinicalAnalyticsModel.fromJson(e as Map<String, dynamic>))
-          .toList();
-    }
-
-    if (payload is Map<String, dynamic>) {
-      final direct = payload['analytics'] ?? payload['data'] ?? payload['items'];
-      if (direct is List) {
-        return direct
-            .map((e) => ClinicalAnalyticsModel.fromJson(e as Map<String, dynamic>))
-            .toList();
-      }
-
-      if (payload['data'] is Map<String, dynamic>) {
-        final nested = (payload['data'] as Map<String, dynamic>)['analytics'] ??
-            (payload['data'] as Map<String, dynamic>)['items'];
-        if (nested is List) {
-          return nested
-              .map((e) => ClinicalAnalyticsModel.fromJson(e as Map<String, dynamic>))
-              .toList();
-        }
-      }
-    }
-
-    return <ClinicalAnalyticsModel>[];
+  String _formatDateForApi(DateTime date) {
+    final y = date.year.toString().padLeft(4, '0');
+    final m = date.month.toString().padLeft(2, '0');
+    final d = date.day.toString().padLeft(2, '0');
+    return '$y-$m-$d';
   }
 
-  // GET /api/analytics — Fetch clinical analytics (filterable)
-  Future<List<ClinicalAnalyticsModel>> getAnalytics({
-    String? metricType,
-    String? clinicianId,
-    String? location,
-    String? patientAgeGroup,
+  Map<String, String> _queryParamsFromFilter(ClinicalAnalyticsQuery filter) {
+    final out = <String, String>{};
+    final json = filter.toJson();
+    json.forEach((key, value) {
+      final text = value?.toString();
+      if (text != null && text.isNotEmpty) {
+        out[key] = text;
+      }
+    });
+    return out;
+  }
+
+  // GET /api/analytics
+  Future<ClinicalAnalyticsModel> getAnalytics({
+    ClinicalAnalyticsQuery? query,
     DateTime? startDate,
     DateTime? endDate,
   }) async {
-    try {
-      final queryParams = <String, String>{
-        if (metricType != null && metricType.isNotEmpty) 'metricType': metricType,
-        if (clinicianId != null && clinicianId.isNotEmpty) 'clinicianId': clinicianId,
-        if (location != null && location.isNotEmpty) 'location': location,
-        if (patientAgeGroup != null && patientAgeGroup.isNotEmpty)
-          'patientAgeGroup': patientAgeGroup,
-        if (startDate != null) 'startDate': startDate.toIso8601String(),
-        if (endDate != null) 'endDate': endDate.toIso8601String(),
-      };
+    final merged = ClinicalAnalyticsQuery(
+      startDate: startDate != null
+          ? _formatDateForApi(startDate)
+          : query?.startDate,
+      endDate: endDate != null ? _formatDateForApi(endDate) : query?.endDate,
+      status: query?.status,
+      clinicianId: query?.clinicianId,
+      patientId: query?.patientId,
+      appointmentType: query?.appointmentType,
+      location: query?.location,
+      billingStatus: query?.billingStatus,
+    );
 
-      final uri = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.analytics}')
-          .replace(queryParameters: queryParams);
-      final response = await http.get(uri, headers: await _authHeaders());
+    final uri = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.analytics}')
+        .replace(queryParameters: _queryParamsFromFilter(merged));
+    final response = await http.get(uri, headers: await _authHeaders());
 
-      if (response.statusCode == 200) {
-        final body = jsonDecode(response.body);
-        return _parseAnalyticsList(body);
-      }
-
-      return <ClinicalAnalyticsModel>[];
-    } catch (_) {
-      return <ClinicalAnalyticsModel>[];
+    if (response.statusCode == 200) {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return ClinicalAnalyticsModel.fromJson(body);
     }
+
+    final payload = _decodeMap(response.body);
+    final message = _errorMessageFromPayload(payload, response.statusCode);
+    throw Exception(message);
   }
 
-  // POST /api/analytics/export — Export analytics data as CSV
+  // POST /api/analytics/export
   Future<String> exportAnalyticsAsCSV({
-    String? metricType,
-    AnalyticsFilters? filters,
+    ClinicalAnalyticsQuery? query,
     DateTime? startDate,
     DateTime? endDate,
   }) async {
-    try {
-      final uri = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.analyticsExport}');
-      final body = <String, dynamic>{
-        'format': 'csv',
-        if (metricType != null && metricType.isNotEmpty) 'metricType': metricType,
-        if (filters?.clinicianId != null) 'clinicianId': filters!.clinicianId,
-        if (filters?.location != null) 'location': filters!.location,
-        if (filters?.patientAgeGroup != null)
-          'patientAgeGroup': filters!.patientAgeGroup,
-        if (startDate != null) 'startDate': startDate.toIso8601String(),
-        if (endDate != null) 'endDate': endDate.toIso8601String(),
-      };
+    final merged = ClinicalAnalyticsQuery(
+      startDate: startDate != null
+          ? _formatDateForApi(startDate)
+          : query?.startDate,
+      endDate: endDate != null ? _formatDateForApi(endDate) : query?.endDate,
+      status: query?.status,
+      clinicianId: query?.clinicianId,
+      patientId: query?.patientId,
+      appointmentType: query?.appointmentType,
+      location: query?.location,
+      billingStatus: query?.billingStatus,
+    );
 
-      final response = await http.post(
-        uri,
-        headers: await _authHeaders(),
-        body: jsonEncode(body),
-      );
+    final uri = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.analyticsExport}');
+    final response = await http.post(
+      uri,
+      headers: await _authHeaders(),
+      body: jsonEncode(merged.toJson()),
+    );
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final contentType = response.headers['content-type'] ?? '';
-        if (contentType.contains('text/csv')) {
-          return response.body;
-        }
-
-        final payload = jsonDecode(response.body);
-        if (payload is Map<String, dynamic>) {
-          final csv = payload['csv'] ?? payload['data'] ?? payload['content'];
-          if (csv is String) return csv;
-          final url = payload['url'] ?? payload['downloadUrl'];
-          if (url is String) return url;
-          final message = payload['message'];
-          if (message is String) return message;
-        }
-
+    if (response.statusCode == 200) {
+      final contentType = response.headers['content-type'] ?? '';
+      if (contentType.contains('text/csv')) {
         return response.body;
       }
-
-      return 'Export failed with status ${response.statusCode}';
-    } catch (e) {
-      return 'Network error: ${e.toString()}';
+      // Fallback: backend should return CSV text, but keep this safe guard.
+      return response.body;
     }
+
+    final payload = _decodeMap(response.body);
+    final message = _errorMessageFromPayload(payload, response.statusCode);
+    throw Exception(message);
   }
 
   Future<Uint8List> exportAnalyticsAsCSVBytes({
-    String? metricType,
-    AnalyticsFilters? filters,
+    ClinicalAnalyticsQuery? query,
     DateTime? startDate,
     DateTime? endDate,
   }) async {
     final csv = await exportAnalyticsAsCSV(
-      metricType: metricType,
-      filters: filters,
+      query: query,
       startDate: startDate,
       endDate: endDate,
     );
     return Uint8List.fromList(csv.codeUnits);
   }
 
-  // Backward-compatible alias
-  Future<List<ClinicalAnalyticsModel>> fetchAnalytics({
-    String? metricType,
-    String? clinicianId,
-    String? location,
-    String? patientAgeGroup,
-    DateTime? startDate,
-    DateTime? endDate,
-  }) {
-    return getAnalytics(
-      metricType: metricType,
-      clinicianId: clinicianId,
-      location: location,
-      patientAgeGroup: patientAgeGroup,
-      startDate: startDate,
-      endDate: endDate,
-    );
+  Map<String, dynamic> _decodeMap(String body) {
+    if (body.trim().isEmpty) return <String, dynamic>{};
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map<String, dynamic>) return decoded;
+    } catch (_) {
+      // Ignore parse errors and fallback below.
+    }
+    return <String, dynamic>{'raw': body};
   }
 
-  // Backward-compatible alias
-  Future<String> exportAnalytics({
-    required String format,
-    String? metricType,
-    AnalyticsFilters? filters,
-  }) {
-    return exportAnalyticsAsCSV(
-      metricType: metricType,
-      filters: filters,
-    );
-  }
+  String _errorMessageFromPayload(Map<String, dynamic> payload, int status) {
+    final errors = payload['errors'];
+    if (errors is List && errors.isNotEmpty) {
+      final parts = errors.map((e) => e.toString()).toList();
+      return parts.join(', ');
+    }
 
+    final message = payload['message']?.toString();
+    if (message != null && message.trim().isNotEmpty) return message;
+
+    final error = payload['error']?.toString();
+    if (error != null && error.trim().isNotEmpty) return error;
+
+    final raw = payload['raw']?.toString();
+    if (raw != null && raw.trim().isNotEmpty) return raw;
+
+    return 'Analytics request failed (status $status)';
+  }
 }

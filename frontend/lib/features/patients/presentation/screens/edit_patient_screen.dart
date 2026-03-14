@@ -5,22 +5,36 @@ import 'package:frontend/features/patients/data/models/patient_model.dart';
 import 'package:frontend/features/patients/presentation/providers/patient_provider.dart';
 import 'package:provider/provider.dart';
 
-class AddPatientScreen extends StatefulWidget {
-  const AddPatientScreen({super.key});
+class EditPatientScreen extends StatefulWidget {
+  final PatientModel patient;
+
+  const EditPatientScreen({
+    super.key,
+    required this.patient,
+  });
 
   @override
-  State<AddPatientScreen> createState() => _AddPatientScreenState();
+  State<EditPatientScreen> createState() => _EditPatientScreenState();
 }
 
-class _AddPatientScreenState extends State<AddPatientScreen> {
+class _EditPatientScreenState extends State<EditPatientScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _ageController = TextEditingController();
-  final TextEditingController _addressController = TextEditingController();
-  final TextEditingController _phoneController = TextEditingController();
+  late final TextEditingController _nameController;
+  late final TextEditingController _ageController;
+  late final TextEditingController _addressController;
+  late final TextEditingController _phoneController;
 
   bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.patient.name);
+    _ageController = TextEditingController(text: widget.patient.age.toString());
+    _addressController = TextEditingController(text: widget.patient.address);
+    _phoneController = TextEditingController(text: widget.patient.phoneNumber);
+  }
 
   @override
   void dispose() {
@@ -34,11 +48,11 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
   @override
   Widget build(BuildContext context) {
     final currentUser = context.watch<AuthProvider>().user;
-    final clinicianId = currentUser?.id ?? '';
+    final clinicianId = currentUser?.id ?? widget.patient.clinicianId;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Add Patient'),
+        title: const Text('Edit Patient'),
       ),
       body: Form(
         key: _formKey,
@@ -113,7 +127,7 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
               readOnly: true,
               initialValue: clinicianId,
               decoration: const InputDecoration(
-                labelText: 'Clinician ID (Auto)',
+                labelText: 'Clinician ID',
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.badge_outlined),
               ),
@@ -134,7 +148,7 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
                       width: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('Add Patient'),
+                  : const Text('Update Patient'),
             ),
           ],
         ),
@@ -162,27 +176,27 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
     });
 
     final patient = PatientModel(
-      id: '',
+      id: widget.patient.id,
       name: _nameController.text.trim(),
       age: int.parse(_ageController.text.trim()),
       address: _addressController.text.trim(),
       phoneNumber: _phoneController.text.trim(),
       clinicianId: clinicianId,
-      createdAt: DateTime.now(),
+      createdAt: widget.patient.createdAt,
     );
 
-    final response = await context.read<PatientProvider>().addPatient(patient);
+    final response = await context.read<PatientProvider>().updatePatient(
+          widget.patient.id,
+          patient,
+        );
 
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
 
     setState(() {
       _isSaving = false;
     });
 
     final success = response['success'] == true;
-
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(response['message']?.toString() ?? ''),
@@ -191,7 +205,7 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
     );
 
     if (success) {
-      Navigator.pop(context);
+      Navigator.pop(context, true);
     }
   }
 }

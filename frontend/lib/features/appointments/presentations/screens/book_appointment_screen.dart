@@ -3,6 +3,8 @@ import 'package:frontend/core/constants/app_colors.dart';
 import 'package:frontend/features/appointments/data/models/appointment_model.dart';
 import 'package:frontend/features/appointments/presentations/provider/appointment_provider.dart';
 import 'package:frontend/features/auth/presentations/providers/auth_provider.dart';
+import 'package:frontend/features/clinicians/data/models/clinician_model.dart';
+import 'package:frontend/features/clinicians/presentation/providers/clinician_provider.dart';
 import 'package:frontend/features/patients/presentation/providers/patient_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -22,7 +24,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
   String? _selectedClinicianId;
   String _selectedClinicianName = '';
   String _appointmentType = AppointmentType.consultation;
-  String _location = AppointmentLocation.mainClinic;
+  String? _location;
   DateTime _selectedDate = DateTime.now();
   TimeOfDay _selectedTime = TimeOfDay.now();
   int _duration = 30;
@@ -37,6 +39,14 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     _selectedClinicianName = user?.name ?? 'Current Clinician';
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<PatientProvider>().fetchPatients();
+      if (_selectedClinicianId != null && _selectedClinicianId!.isNotEmpty) {
+        context
+            .read<AppointmentProvider>()
+            .fetchAppointmentsByClinicianId(_selectedClinicianId!);
+        context
+            .read<ClinicianProvider>()
+            .fetchClinicianById(_selectedClinicianId!);
+      }
     });
   }
 
@@ -186,23 +196,54 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
   }
 
   Widget _buildLocationDropdown() {
-    return DropdownButtonFormField<String>(
-      decoration: const InputDecoration(
-        labelText: 'Location',
-        prefixIcon: Icon(Icons.location_on),
-        border: OutlineInputBorder(),
-      ),
-      value: _location,
-      items: AppointmentLocation.all.map((location) {
-        return DropdownMenuItem(
-          value: location,
-          child: Text(location),
+    return Consumer<ClinicianProvider>(
+      builder: (context, clinicianProvider, child) {
+        final clinician = clinicianProvider.selectedClinician;
+        final availableLocations = _availableLocationsFromClinician(clinician);
+
+        if (availableLocations.isEmpty) {
+          return InputDecorator(
+            decoration: const InputDecoration(
+              labelText: 'Location',
+              prefixIcon: Icon(Icons.location_on),
+              border: OutlineInputBorder(),
+            ),
+            child: Text(
+              'No available location configured for this clinician.',
+              style: TextStyle(color: Colors.grey[600], fontSize: 14),
+            ),
+          );
+        }
+
+        if (_location == null || !availableLocations.contains(_location)) {
+          _location = availableLocations.first;
+        }
+
+        return DropdownButtonFormField<String>(
+          decoration: const InputDecoration(
+            labelText: 'Location',
+            prefixIcon: Icon(Icons.location_on),
+            border: OutlineInputBorder(),
+          ),
+          value: _location,
+          items: availableLocations.map((location) {
+            return DropdownMenuItem(
+              value: location,
+              child: Text(location),
+            );
+          }).toList(),
+          onChanged: (value) {
+            setState(() {
+              _location = value;
+            });
+          },
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return 'Please select a location';
+            }
+            return null;
+          },
         );
-      }).toList(),
-      onChanged: (value) {
-        setState(() {
-          _location = value!;
-        });
       },
     );
   }
@@ -381,6 +422,16 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
       return;
     }
 
+    if (_location == null || _location!.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a location from clinician availability.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
     // Combine date and time
     final scheduledAt = DateTime(
       _selectedDate.year,
@@ -389,6 +440,72 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
       _selectedTime.hour,
       _selectedTime.minute,
     );
+
+    if (!scheduledAt.isAfter(DateTime.now())) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please choose a future date/time for the appointment.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    final clinicianProvider = context.read<ClinicianProvider>();
+    final appointmentProvider = context.read<AppointmentProvider>();
+
+    await clinicianProvider.fetchClinicianById(_selectedClinicianId!);
+    if (!mounted) return;
+
+    final clinician = clinicianProvider.selectedClinician;
+    if (clinician == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            clinicianProvider.errorMessage ??
+                'Unable to fetch clinician details for availability check.',
+          ),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    if (!_isWithinAvailability(
+      scheduledAt: scheduledAt,
+      durationMinutes: _duration,
+      availability: clinician.availability,
+    )) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Clinician is not available for this date/time slot. Please choose another slot.',
+          ),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    await appointmentProvider.fetchAppointmentsByClinicianId(
+      _selectedClinicianId!,
+    );
+    if (!mounted) return;
+
+    if (_hasOverlappingBooking(
+      scheduledAt: scheduledAt,
+      durationMinutes: _duration,
+      clinicianId: _selectedClinicianId!,
+      existingAppointments: appointmentProvider.appointments,
+    )) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Already have one booking at this time.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
 
     // Create appointment
     final appointment = AppointmentModel(
@@ -399,7 +516,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
       status: AppointmentStatus.scheduled,
       scheduledAt: scheduledAt,
       duration: _duration,
-      location: _location,
+      location: _location!,
       notes: _notes,
       billing: BillingInfo(
         amount: _amount,
@@ -436,5 +553,98 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
         );
       }
     }
+  }
+
+  bool _isWithinAvailability({
+    required DateTime scheduledAt,
+    required int durationMinutes,
+    required List<ClinicianAvailability> availability,
+  }) {
+    if (availability.isEmpty) return false;
+
+    final targetDay = _weekdayName(scheduledAt.weekday).toLowerCase();
+    final appointmentStart = scheduledAt.hour * 60 + scheduledAt.minute;
+    final appointmentEnd = appointmentStart + durationMinutes;
+
+    for (final slot in availability) {
+      if (slot.dayOfWeek.trim().toLowerCase() != targetDay) continue;
+
+      final slotStart = _parseTimeToMinutes(slot.startTime);
+      final slotEnd = _parseTimeToMinutes(slot.endTime);
+      if (slotStart == null || slotEnd == null) continue;
+
+      if (appointmentStart >= slotStart && appointmentEnd <= slotEnd) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  bool _hasOverlappingBooking({
+    required DateTime scheduledAt,
+    required int durationMinutes,
+    required String clinicianId,
+    required List<AppointmentModel> existingAppointments,
+  }) {
+    final newStart = scheduledAt;
+    final newEnd = scheduledAt.add(Duration(minutes: durationMinutes));
+
+    for (final appointment in existingAppointments) {
+      if (appointment.clinicianId != clinicianId) continue;
+      if (appointment.status.trim().toLowerCase() == 'cancelled') continue;
+
+      final sameDay = appointment.scheduledAt.year == newStart.year &&
+          appointment.scheduledAt.month == newStart.month &&
+          appointment.scheduledAt.day == newStart.day;
+      if (!sameDay) continue;
+
+      final existingStart = appointment.scheduledAt;
+      final existingEnd = appointment.scheduledAt
+          .add(Duration(minutes: appointment.duration));
+
+      final overlaps = newStart.isBefore(existingEnd) &&
+          newEnd.isAfter(existingStart);
+      if (overlaps) return true;
+    }
+
+    return false;
+  }
+
+  int? _parseTimeToMinutes(String value) {
+    final parts = value.split(':');
+    if (parts.length != 2) return null;
+    final hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+    if (hour == null || minute == null) return null;
+    if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+    return hour * 60 + minute;
+  }
+
+  String _weekdayName(int weekday) {
+    const names = <String>[
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
+    return names[weekday - 1];
+  }
+
+  List<String> _availableLocationsFromClinician(ClinicianModel? clinician) {
+    if (clinician == null) return const <String>[];
+
+    final unique = <String>[];
+    for (final slot in clinician.availability) {
+      final location = slot.location.trim();
+      if (location.isEmpty) continue;
+      if (!unique.contains(location)) {
+        unique.add(location);
+      }
+    }
+    return unique;
   }
 }

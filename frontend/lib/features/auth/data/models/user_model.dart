@@ -21,7 +21,7 @@ class UserModel {
     return UserModel(
       id: json['id'] ?? json['_id'] ?? '',
       email: json['email'] ?? '',
-      name: json['name'] ?? '',
+      name: json['name'] ?? json['fullName'] ?? '',
       role: json['role'] ?? 'clinician',
       phone: json['phone'],
       createdAt:

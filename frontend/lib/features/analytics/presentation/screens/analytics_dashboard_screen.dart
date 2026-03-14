@@ -1,17 +1,18 @@
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:file_saver/file_saver.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:frontend/core/constants/app_colors.dart';
+import 'package:frontend/core/widgets/error_widget.dart' as custom;
 import 'package:frontend/core/widgets/loading_widget.dart';
 import 'package:frontend/features/analytics/data/models/analytics_model.dart';
 import 'package:frontend/features/analytics/presentation/providers/analytics_provider.dart';
-import 'package:provider/provider.dart';
-import 'package:frontend/core/widgets/error_widget.dart' as custom;
 import 'package:intl/intl.dart';
-import 'package:file_saver/file_saver.dart';
-import 'dart:io';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 
-// Clinical Analytics Dashboard Screen
 class AnalyticsDashboardScreen extends StatefulWidget {
   const AnalyticsDashboardScreen({super.key});
 
@@ -20,14 +21,13 @@ class AnalyticsDashboardScreen extends StatefulWidget {
 }
 
 class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
-  String? _selectedMetricType;
+  ClinicalAnalyticsQuery _query = const ClinicalAnalyticsQuery();
 
   @override
   void initState() {
     super.initState();
-    // Fetch analytics on screen load
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AnalyticsProvider>().fetchClinicalAnalytics();
+      context.read<AnalyticsProvider>().fetchClinicalAnalytics(query: _query);
     });
   }
 
@@ -59,90 +59,54 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
             icon: const Icon(Icons.refresh),
             onPressed: () {
               context.read<AnalyticsProvider>().fetchClinicalAnalytics(
-                metricType: _selectedMetricType,
-              );
+                    query: _query,
+                  );
             },
           ),
         ],
       ),
       body: Consumer<AnalyticsProvider>(
         builder: (context, provider, child) {
-          if (provider.isLoading && provider.clinicalAnalyticsRecords.isEmpty) {
+          if (provider.isLoading && provider.analytics == null) {
             return const LoadingWidget(message: 'Loading analytics...');
           }
 
           if (provider.errorMessage != null) {
             return custom.CustomErrorWidget(
               message: provider.errorMessage!,
-              onRetry: () => provider.fetchClinicalAnalytics(),
+              onRetry: () => provider.fetchClinicalAnalytics(query: _query),
             );
           }
 
-          if (provider.clinicalAnalyticsRecords.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.analytics_outlined,
-                    size: 80,
-                    color: Colors.grey.shade400,
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'No analytics data available',
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
-                  ),
-                ],
-              ),
+          final analytics = provider.analytics;
+          if (analytics == null) {
+            return const Center(
+              child: Text('No analytics data available'),
             );
           }
 
           return RefreshIndicator(
-            onRefresh: () => provider.fetchClinicalAnalytics(
-              metricType: _selectedMetricType,
-            ),
-            child: Column(
+            onRefresh: () => provider.fetchClinicalAnalytics(query: _query),
+            child: ListView(
+              padding: const EdgeInsets.all(16),
               children: [
-                // Metric type filter chips
-                if (_selectedMetricType != null)
-                  Container(
-                    color: AppColors.primary.withOpacity(0.1),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'Filtered by: $_selectedMetricType',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            setState(() {
-                              _selectedMetricType = null;
-                            });
-                            provider.clearAllFilters();
-                          },
-                          child: const Text('Clear'),
-                        ),
-                      ],
-                    ),
-                  ),
-                // Analytics records list
-                Expanded(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: provider.clinicalAnalyticsRecords.length,
-                    itemBuilder: (context, index) {
-                      final record = provider.clinicalAnalyticsRecords[index];
-                      return _buildAnalyticsCard(record);
-                    },
-                  ),
+                _buildSummaryCards(analytics.summary),
+                const SizedBox(height: 16),
+                _buildBreakdownCard('By Status', analytics.breakdowns.byStatus),
+                const SizedBox(height: 12),
+                _buildBreakdownCard(
+                  'By Appointment Type',
+                  analytics.breakdowns.byAppointmentType,
                 ),
+                const SizedBox(height: 12),
+                _buildBreakdownCard('By Location', analytics.breakdowns.byLocation),
+                const SizedBox(height: 12),
+                _buildBreakdownCard(
+                  'By Billing Status',
+                  analytics.breakdowns.byBillingStatus,
+                ),
+                const SizedBox(height: 16),
+                _buildAppointmentsPreview(analytics.appointments),
               ],
             ),
           );
@@ -151,407 +115,321 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
     );
   }
 
-  Widget _buildAnalyticsCard(ClinicalAnalyticsModel record) {
-    final dateFormat = DateFormat('MMM dd, yyyy');
-    
+  Widget _buildSummaryCards(ClinicalAnalyticsSummary summary) {
+    Widget tile(String label, String value, Color color) {
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withOpacity(0.25)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: TextStyle(fontSize: 12, color: color),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Summary',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 10),
+        GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: 2,
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
+          childAspectRatio: 2.2,
+          children: [
+            tile('Total Appointments', '${summary.totalAppointments}', Colors.blue),
+            tile('Total Duration (mins)', '${summary.totalDurationMinutes}', Colors.teal),
+            tile('Avg Duration (mins)', summary.averageDurationMinutes.toStringAsFixed(1), Colors.indigo),
+            tile('Total Billing', summary.totalBillingAmount.toStringAsFixed(2), Colors.green),
+            tile('Avg Billing', summary.averageBillingAmount.toStringAsFixed(2), Colors.orange),
+            tile('Scheduled', '${summary.scheduledAppointments}', Colors.purple),
+            tile('Completed', '${summary.completedAppointments}', AppColors.success),
+            tile('Cancelled', '${summary.cancelledAppointments}', AppColors.error),
+            tile('Paid', '${summary.paidAppointments}', Colors.green.shade800),
+            tile('Pending', '${summary.pendingAppointments}', AppColors.warning),
+            tile('Insured', '${summary.insuredAppointments}', Colors.brown),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBreakdownCard(String title, List<AnalyticsBreakdownItem> items) {
     return Card(
-      elevation: 2,
-      margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => _showRecordDetails(record),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: _getMetricColor(record.metricType).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(
-                      _getMetricIcon(record.metricType),
-                      color: _getMetricColor(record.metricType),
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          record.metricType,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          'ID: ${_shortId(record.id, 12)}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              
-              // Value display
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Value',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      record.data.value.toString(),
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: _getMetricColor(record.metricType),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              
-              const SizedBox(height: 12),
-              
-              // Time range
-              Row(
-                children: [
-                  Icon(Icons.calendar_today, size: 16, color: Colors.grey.shade600),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      '${dateFormat.format(record.data.timeRange.start)} - ${dateFormat.format(record.data.timeRange.end)}',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey.shade700,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              
-              // Filters (if any)
-              if (record.data.filters.clinicianId != null ||
-                  record.data.filters.location != null ||
-                  record.data.filters.patientAgeGroup != null) ...[
-                const SizedBox(height: 8),
-                const Divider(height: 1),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    if (record.data.filters.clinicianId != null)
-                      _buildFilterChip(
-                        'Clinician',
-                        _shortId(record.data.filters.clinicianId!, 8),
-                        Icons.person,
-                      ),
-                    if (record.data.filters.location != null)
-                      _buildFilterChip(
-                        'Location',
-                        record.data.filters.location!,
-                        Icons.location_on,
-                      ),
-                    if (record.data.filters.patientAgeGroup != null)
-                      _buildFilterChip(
-                        'Age Group',
-                        record.data.filters.patientAgeGroup!,
-                        Icons.groups,
-                      ),
-                  ],
-                ),
-              ],
-              
-              const SizedBox(height: 8),
-              
-              // Generated time
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            if (items.isEmpty)
+              const Text('No data')
+            else
+              ...items.map(
+                (item) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
                     children: [
-                      Icon(Icons.access_time, size: 14, color: Colors.grey.shade500),
-                      const SizedBox(width: 4),
+                      Expanded(child: Text(item.label)),
                       Text(
-                        'Generated: ${dateFormat.format(record.generatedAt)}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey.shade500,
-                        ),
+                        '${item.count}',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
-                  Icon(Icons.arrow_forward_ios, size: 12, color: Colors.grey.shade400),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFilterChip(String label, String value, IconData icon) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppColors.primary.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppColors.primary.withOpacity(0.3),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: AppColors.primary),
-          const SizedBox(width: 4),
-          Text(
-            '$label: ',
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: AppColors.primary,
-            ),
-          ),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 11,
-              color: Colors.grey.shade700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Color _getMetricColor(String metricType) {
-    switch (metricType) {
-      case MetricType.appointmentVolume:
-        return Colors.blue;
-      case MetricType.treatmentOutcomes:
-        return Colors.green;
-      case MetricType.patientSatisfaction:
-        return Colors.orange;
-      case MetricType.revenueAnalysis:
-        return Colors.purple;
-      case MetricType.clinicianPerformance:
-        return Colors.teal;
-      case MetricType.patientDemographics:
-        return Colors.pink;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  IconData _getMetricIcon(String metricType) {
-    switch (metricType) {
-      case MetricType.appointmentVolume:
-        return Icons.calendar_month;
-      case MetricType.treatmentOutcomes:
-        return Icons.medical_services;
-      case MetricType.patientSatisfaction:
-        return Icons.sentiment_satisfied;
-      case MetricType.revenueAnalysis:
-        return Icons.attach_money;
-      case MetricType.clinicianPerformance:
-        return Icons.people;
-      case MetricType.patientDemographics:
-        return Icons.groups;
-      default:
-        return Icons.analytics;
-    }
-  }
-
-  void _showRecordDetails(ClinicalAnalyticsModel record) {
-    final dateFormat = DateFormat('MMM dd, yyyy HH:mm');
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(record.metricType),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildDetailRow('ID', record.id),
-              const Divider(),
-              _buildDetailRow('Value', record.data.value.toString()),
-              const Divider(),
-              _buildDetailRow(
-                'Time Range',
-                '${dateFormat.format(record.data.timeRange.start)}\nto\n${dateFormat.format(record.data.timeRange.end)}',
-              ),
-              const Divider(),
-              _buildDetailRow('Generated At', dateFormat.format(record.generatedAt)),
-              _buildDetailRow('Updated At', dateFormat.format(record.updatedAt)),
-              if (record.data.filters.clinicianId != null ||
-                  record.data.filters.location != null ||
-                  record.data.filters.patientAgeGroup != null) ...[
-                const Divider(),
-                const Text(
-                  'Filters:',
-                  style: TextStyle(fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 8),
-                if (record.data.filters.clinicianId != null)
-                  _buildDetailRow('Clinician ID', record.data.filters.clinicianId!),
-                if (record.data.filters.location != null)
-                  _buildDetailRow('Location', record.data.filters.location!),
-                if (record.data.filters.patientAgeGroup != null)
-                  _buildDetailRow('Age Group', record.data.filters.patientAgeGroup!),
-              ],
-            ],
-          ),
+              ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
       ),
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 100,
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
+  Widget _buildAppointmentsPreview(List<AnalyticsAppointmentRow> rows) {
+    final dateFormat = DateFormat('MMM dd, yyyy HH:mm');
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Appointments (${rows.length})',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            if (rows.isEmpty)
+              const Text('No appointments for selected filters')
+            else
+              ...rows.take(8).map(
+                (row) => ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  title: Text('${row.patientName} • ${row.appointmentType}'),
+                  subtitle: Text(
+                    '${row.status} • ${row.location} • ${_formatDate(row.scheduledAt, dateFormat)}',
+                  ),
+                  trailing: Text(row.billingAmount.toStringAsFixed(2)),
+                ),
               ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(fontSize: 13),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   void _showFilterDialog(BuildContext context) {
+    final startController = TextEditingController(text: _query.startDate ?? '');
+    final endController = TextEditingController(text: _query.endDate ?? '');
+    final clinicianController = TextEditingController(text: _query.clinicianId ?? '');
+    final patientController = TextEditingController(text: _query.patientId ?? '');
+
+    String? status = _query.status;
+    String? appointmentType = _query.appointmentType;
+    String? location = _query.location;
+    String? billingStatus = _query.billingStatus;
+
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Filter Analytics'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Filter by Metric Type',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 12),
-              ...[
-                MetricType.appointmentVolume,
-                MetricType.treatmentOutcomes,
-                MetricType.patientSatisfaction,
-                MetricType.revenueAnalysis,
-                MetricType.clinicianPerformance,
-                MetricType.patientDemographics,
-              ].map((type) => ListTile(
-                    leading: Icon(
-                      _getMetricIcon(type),
-                      color: _getMetricColor(type),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Filter Analytics'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: startController,
+                  decoration: const InputDecoration(
+                    labelText: 'Start Date (YYYY-MM-DD)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: endController,
+                  decoration: const InputDecoration(
+                    labelText: 'End Date (YYYY-MM-DD)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<String>(
+                  value: status,
+                  decoration: const InputDecoration(
+                    labelText: 'Status',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: [
+                    const DropdownMenuItem(value: null, child: Text('Any')),
+                    ...AnalyticsEnum.status.map(
+                      (e) => DropdownMenuItem(value: e, child: Text(e)),
                     ),
-                    title: Text(type),
-                    onTap: () {
-                      Navigator.pop(dialogContext);
-                      setState(() {
-                        _selectedMetricType = type;
-                      });
-                      context.read<AnalyticsProvider>().fetchClinicalAnalytics(
-                            metricType: type,
-                          );
-                    },
-                  )),
-              const Divider(),
-              ListTile(
-                leading: const Icon(Icons.clear_all),
-                title: const Text('Clear All Filters'),
-                onTap: () {
-                  Navigator.pop(dialogContext);
-                  setState(() {
-                    _selectedMetricType = null;
-                  });
-                  context.read<AnalyticsProvider>().clearAllFilters();
-                },
-              ),
-            ],
+                  ],
+                  onChanged: (value) => setDialogState(() => status = value),
+                ),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<String>(
+                  value: appointmentType,
+                  decoration: const InputDecoration(
+                    labelText: 'Appointment Type',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: [
+                    const DropdownMenuItem(value: null, child: Text('Any')),
+                    ...AnalyticsEnum.appointmentType.map(
+                      (e) => DropdownMenuItem(value: e, child: Text(e)),
+                    ),
+                  ],
+                  onChanged: (value) =>
+                      setDialogState(() => appointmentType = value),
+                ),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<String>(
+                  value: location,
+                  decoration: const InputDecoration(
+                    labelText: 'Location',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: [
+                    const DropdownMenuItem(value: null, child: Text('Any')),
+                    ...AnalyticsEnum.location.map(
+                      (e) => DropdownMenuItem(value: e, child: Text(e)),
+                    ),
+                  ],
+                  onChanged: (value) => setDialogState(() => location = value),
+                ),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<String>(
+                  value: billingStatus,
+                  decoration: const InputDecoration(
+                    labelText: 'Billing Status',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: [
+                    const DropdownMenuItem(value: null, child: Text('Any')),
+                    ...AnalyticsEnum.billingStatus.map(
+                      (e) => DropdownMenuItem(value: e, child: Text(e)),
+                    ),
+                  ],
+                  onChanged: (value) =>
+                      setDialogState(() => billingStatus = value),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: clinicianController,
+                  decoration: const InputDecoration(
+                    labelText: 'Clinician ID (ObjectId)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: patientController,
+                  decoration: const InputDecoration(
+                    labelText: 'Patient ID (ObjectId)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                setState(() {
+                  _query = const ClinicalAnalyticsQuery();
+                });
+                context.read<AnalyticsProvider>().clearAllFilters();
+              },
+              child: const Text('Clear'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final q = ClinicalAnalyticsQuery(
+                  startDate: startController.text.trim().isEmpty
+                      ? null
+                      : startController.text.trim(),
+                  endDate: endController.text.trim().isEmpty
+                      ? null
+                      : endController.text.trim(),
+                  status: status,
+                  clinicianId: clinicianController.text.trim().isEmpty
+                      ? null
+                      : clinicianController.text.trim(),
+                  patientId: patientController.text.trim().isEmpty
+                      ? null
+                      : patientController.text.trim(),
+                  appointmentType: appointmentType,
+                  location: location,
+                  billingStatus: billingStatus,
+                );
+
+                Navigator.pop(dialogContext);
+                setState(() {
+                  _query = q;
+                });
+                context.read<AnalyticsProvider>().applyQuery(q);
+              },
+              child: const Text('Apply'),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  String _shortId(String value, int length) {
-    if (value.isEmpty) return value;
-    if (value.length <= length) return value;
-    return '${value.substring(0, length)}...';
+  String _formatDate(String value, DateFormat format) {
+    if (value.trim().isEmpty) return '-';
+    try {
+      return format.format(DateTime.parse(value));
+    } catch (_) {
+      return value;
+    }
   }
 
   Future<void> _exportAnalytics(BuildContext context) async {
     final provider = context.read<AnalyticsProvider>();
-    final filters = provider.analyticsFilters;
-    final metricType = _selectedMetricType;
 
-    final bytes = await provider.exportAnalyticsAsCSVBytes(
-      metricType: metricType,
-      filters: filters,
-    );
+    final bytes = await provider.exportAnalyticsAsCSVBytes(query: _query);
 
     if (!context.mounted) return;
 
     if (bytes == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Export failed. Please try again.')),
+        SnackBar(
+          content: Text(provider.errorMessage ?? 'Export failed. Please try again.'),
+        ),
       );
       return;
     }
@@ -561,7 +439,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
       const ext = 'csv';
       const mime = MimeType.csv;
       const customMime = 'text/csv';
-      final fileName = 'clinical_analytics_$timestamp';
+      final fileName = 'analytics_$timestamp';
 
       String savedPath;
       try {

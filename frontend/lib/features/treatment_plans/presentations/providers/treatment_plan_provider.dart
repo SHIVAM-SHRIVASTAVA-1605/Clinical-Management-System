@@ -181,30 +181,6 @@ class TreatmentPlanProvider extends ChangeNotifier {
     }
   }
 
-  // Delete treatment plan
-  Future<bool> deleteTreatmentPlan(String id) async {
-    _setLoading(true);
-    _clearError();
-
-    try {
-      final response = await _treatmentPlanService.deleteTreatmentPlan(id);
-
-      if (response['success'] == true) {
-        await fetchTreatmentPlans();
-        _setLoading(false);
-        return true;
-      } else {
-        _setError(response['message'] ?? 'Failed to delete treatment plan');
-        _setLoading(false);
-        return false;
-      }
-    } catch (e) {
-      _setError('Failed to delete treatment plan: ${e.toString()}');
-      _setLoading(false);
-      return false;
-    }
-  }
-
   // Clear selected treatment plan
   void clearSelectedTreatmentPlan() {
     _selectedTreatmentPlan = null;

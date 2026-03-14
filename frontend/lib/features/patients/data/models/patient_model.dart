@@ -18,6 +18,15 @@ class PatientModel {
   });
 
   factory PatientModel.fromJson(Map<String, dynamic> json) {
+    final rawClinician = json['clinicianId'] ?? json['clinician'];
+    String parsedClinicianId = '';
+    if (rawClinician is Map<String, dynamic>) {
+      parsedClinicianId =
+          (rawClinician['id'] ?? rawClinician['_id'] ?? '').toString();
+    } else if (rawClinician != null) {
+      parsedClinicianId = rawClinician.toString();
+    }
+
     return PatientModel(
       id: (json['id'] ?? json['_id'] ?? '').toString(),
       name: (json['name'] ?? '').toString(),
@@ -26,7 +35,7 @@ class PatientModel {
           : int.tryParse(json['age']?.toString() ?? '') ?? 0,
       address: (json['address'] ?? '').toString(),
       phoneNumber: (json['phoneNumber'] ?? json['phone'] ?? '').toString(),
-      clinicianId: (json['clinicianId'] ?? '').toString(),
+      clinicianId: parsedClinicianId,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'].toString())
           : DateTime.now(),
@@ -35,13 +44,11 @@ class PatientModel {
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
       'name': name,
       'age': age,
       'address': address,
       'phoneNumber': phoneNumber,
       'clinicianId': clinicianId,
-      'createdAt': createdAt.toIso8601String(),
     };
   }
 }

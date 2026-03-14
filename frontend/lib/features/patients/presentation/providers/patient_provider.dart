@@ -50,6 +50,27 @@ class PatientProvider extends ChangeNotifier {
     }
   }
 
+  Future<Map<String, dynamic>> updatePatient(
+    String id,
+    PatientModel patient,
+  ) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final result = await _service.updatePatient(id, patient);
+      if (result['success'] == true) {
+        _patients = await _service.getAllPatients();
+      }
+      return result;
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<Map<String, dynamic>> deletePatient(String id) async {
     _isLoading = true;
     notifyListeners();
